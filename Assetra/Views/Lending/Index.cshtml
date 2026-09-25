@@ -1,0 +1,218 @@
+@model List<Assetra.Models.LendingRecord>
+@{
+    ViewData["Title"] = "Borrowing History";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var role = Context.Session.GetString("Role");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Tool Borrowing & Return History</h4>
+        <p class="text-muted small mb-0">Track and filter active and past equipment borrow transactions.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/Lending/Scan" class="btn btn-indigo shadow-sm"><i class="bi bi-camera me-1"></i> Scan QR code</a>
+        <a href="/Lending/Create" class="btn btn-outline-indigo shadow-sm"><i class="bi bi-plus-circle me-1"></i> Process Manual Borrow</a>
+    </div>
+</div>
+
+<!-- Success/Error Notifications -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 text-success py-2 px-3 mb-4 rounded small shadow-sm" style="background-color: #f0fdf4;">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 text-danger py-2 px-3 mb-4 rounded small shadow-sm" style="background-color: #fef2f2;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+    </div>
+}
+
+<!-- Search and Filters Panel -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <form method="get" action="/Lending/Index" class="row g-2 align-items-center">
+            <div class="col-md-4 col-sm-12">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Search Student name, ID, tool..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            
+            <div class="col-md-3 col-6">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">-- All Statuses --</option>
+                    <option value="Pending" selected="@(ViewBag.Status == "Pending")">Pending Approval</option>
+                    <option value="Borrowed" selected="@(ViewBag.Status == "Borrowed" || ViewBag.Status == "Approved")">Borrowed (Active)</option>
+                    <option value="Returned" selected="@(ViewBag.Status == "Returned")">Returned</option>
+                    <option value="Overdue" selected="@(ViewBag.Status == "Overdue")">Overdue</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <select name="category" class="form-select form-select-sm">
+                    <option value="">-- All Categories --</option>
+                    <option value="Laboratory Equipment" selected="@(ViewBag.Category == "Laboratory Equipment")">Laboratory Equipment</option>
+                    <option value="Hand Tools" selected="@(ViewBag.Category == "Hand Tools")">Hand Tools</option>
+                    <option value="Measuring Tools" selected="@(ViewBag.Category == "Measuring Tools")">Measuring Tools</option>
+                    <option value="Electronic Equipment" selected="@(ViewBag.Category == "Electronic Equipment")">Electronic Equipment</option>
+                    <option value="Sports Equipment" selected="@(ViewBag.Category == "Sports Equipment")">Sports Equipment</option>
+                    <option value="Other" selected="@(ViewBag.Category == "Other")">Other</option>
+                </select>
+            </div>
+
+            <div class="col-md-2 col-sm-12 d-grid">
+                <button type="submit" class="btn btn-sm btn-indigo"><i class="bi bi-filter me-1"></i>Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Sort Controls -->
+<div class="d-flex justify-content-end align-items-center mb-3 gap-2 text-muted small">
+    <span>Sort by:</span>
+    <select onchange="location = this.value;" class="form-select form-select-sm border shadow-sm" style="width: auto;">
+        <option value="@Url.Action("Index", new { search = ViewBag.Search, status = ViewBag.Status, category = ViewBag.Category, sort = "date_desc" })" selected="@(ViewBag.Sort == "date_desc")">Date Borrowed (Newest)</option>
+        <option value="@Url.Action("Index", new { search = ViewBag.Search, status = ViewBag.Status, category = ViewBag.Category, sort = "date_asc" })" selected="@(ViewBag.Sort == "date_asc")">Date Borrowed (Oldest)</option>
+        <option value="@Url.Action("Index", new { search = ViewBag.Search, status = ViewBag.Status, category = ViewBag.Category, sort = "due_asc" })" selected="@(ViewBag.Sort == "due_asc")">Due Date (Earlier)</option>
+        <option value="@Url.Action("Index", new { search = ViewBag.Search, status = ViewBag.Status, category = ViewBag.Category, sort = "tool_asc" })" selected="@(ViewBag.Sort == "tool_asc")">Tool Name (A-Z)</option>
+        <option value="@Url.Action("Index", new { search = ViewBag.Search, status = ViewBag.Status, category = ViewBag.Category, sort = "student_asc" })" selected="@(ViewBag.Sort == "student_asc")">Student Name (A-Z)</option>
+    </select>
+</div>
+
+<!-- Data Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 bg-white">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">TX ID</th>
+                        <th>Tool Name / ID</th>
+                        <th>Student Name / ID</th>
+                        <th>Borrowed</th>
+                        <th>Expected Return</th>
+                        <th>Actual Return</th>
+                        <th>Status</th>
+                        <th>Conditions</th>
+                        @if (role == "Admin")
+                        {
+                            <th>Teacher/Admin</th>
+                            <th class="pe-4 text-end">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted">
+                                <i class="bi bi-card-list fs-2 d-block mb-2"></i>
+                                No borrowing records found.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model)
+                        {
+                            bool isOverdue = item.Status != "Returned" && item.Status != "Rejected" && item.DueDate < DateTime.Today;
+                            <tr>
+                                <td class="ps-4 font-monospace small">TX-@item.LendingId.ToString("D4")</td>
+                                <td>
+                                    <div class="fw-semibold text-indigo-900">@item.Property?.Name</div>
+                                    <small class="text-muted font-monospace small">@item.PropertyId</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark d-flex align-items-center flex-wrap gap-1">
+                                        <span>@item.BorrowerName</span>
+                                        @if (ViewBag.OverdueLendingIds != null && ((HashSet<int>)ViewBag.OverdueLendingIds).Contains(item.LendingId))
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger ms-1" title="Borrower has overdue condition report check-in(s) for this loan!">
+                                                <i class="bi bi-flag-fill me-1"></i>⚠️ Missed Check-in
+                                            </span>
+                                        }
+                                    </div>
+                                    <small class="text-muted font-monospace small">Student ID: @item.StudentId</small>
+                                </td>
+                                <td class="small">@item.DateBorrowed.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="small fw-medium @(isOverdue ? "text-danger" : "text-dark")">@item.DueDate.ToString("yyyy-MM-dd")</td>
+                                <td class="small text-muted">
+                                    @(item.DateReturned.HasValue ? item.DateReturned.Value.ToString("yyyy-MM-dd HH:mm") : "-")
+                                </td>
+                                <td>
+                                    @if (item.Status == "Pending")
+                                    {
+                                        <span class="badge rounded-pill bg-cyan-100 text-cyan-800 border border-cyan-200">Pending Approval</span>
+                                    }
+                                    else if (item.Status == "Returned")
+                                    {
+                                        <span class="badge rounded-pill bg-emerald-100 text-emerald-800 border border-emerald-200">Returned</span>
+                                    }
+                                    else if (isOverdue)
+                                    {
+                                        <span class="badge rounded-pill bg-rose-100 text-rose-800 border border-rose-200">Overdue</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill bg-amber-100 text-amber-800 border border-amber-200">Borrowed</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <span class="text-muted" style="font-size:11px;">Out:</span> 
+                                        <strong class="text-secondary" style="font-size:11px;">@item.BorrowedCondition</strong>
+                                    </div>
+                                    @if (item.DateReturned.HasValue)
+                                    {
+                                        <div class="small mt-1">
+                                            <span class="text-muted" style="font-size:11px;">In:</span> 
+                                            <strong class="text-indigo-600" style="font-size:11px;">@item.ReturnedCondition</strong>
+                                        </div>
+                                    }
+                                </td>
+                                @if (role == "Admin")
+                                {
+                                    <td class="small text-muted">@(item.ProcessedBy ?? "-")</td>
+                                    <td class="pe-4 text-end">
+                                        @if (item.Status == "Borrowed" || item.Status == "Approved" || isOverdue || item.Status == "Pending")
+                                        {
+                                            <a href="/Lending/ReturnTool/@item.LendingId" class="btn btn-sm btn-outline-success shadow-sm py-1 px-2 fw-semibold">
+                                                <i class="bi bi-arrow-return-left me-1"></i>Process Return
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">-</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+    .btn-outline-indigo {
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+    .btn-outline-indigo:hover {
+        background-color: #6366f1;
+        color: #fff;
+    }
+</style>

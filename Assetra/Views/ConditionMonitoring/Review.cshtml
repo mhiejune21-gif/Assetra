@@ -1,0 +1,282 @@
+@model Assetra.Models.ConditionReport
+@{
+    ViewData["Title"] = "Review Condition Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var toolHistory = ViewBag.ToolHistory as IEnumerable<Assetra.Models.ConditionReport>;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark"><i class="bi bi-shield-fill-check me-2 text-indigo-600"></i>Review Condition Report</h4>
+        <p class="text-muted small mb-0">Evaluate the reported tool status and determine the appropriate action.</p>
+    </div>
+    <a href="/ConditionMonitoring" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back to Dashboard</a>
+</div>
+
+<div class="row">
+    <!-- Review Column -->
+    <div class="col-lg-7 mb-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-light py-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-file-text me-2 text-muted"></i>Submission Details</h6>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3 mb-4 border-bottom pb-3">
+                    <div class="col-sm-6">
+                        <span class="text-muted small d-block">Report Type</span>
+                        <strong class="text-dark">
+                            @if (Model.IsScheduled)
+                            {
+                                <span class="text-indigo-600"><i class="bi bi-calendar-check me-1"></i>Scheduled Check-in (#@Model.ReportNumber)</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger"><i class="bi bi-lightning-fill me-1"></i>Emergency Incident Report</span>
+                            }
+                        </strong>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="text-muted small d-block">Submitted Date</span>
+                        <strong class="text-dark">@Model.DateSubmitted?.ToString("MMMM dd, yyyy 'at' hh:mm tt")</strong>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <span class="text-muted small d-block mb-1">Reported Condition</span>
+                    <div>
+                        @if (Model.Condition == "Minor Damage")
+                        {
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1.5 fs-6">🟡 Minor Damage</span>
+                        }
+                        else if (Model.Condition == "Critical Damage")
+                        {
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 fs-6">🔴 Critical Damage</span>
+                        }
+                        else if (Model.Condition == "For Repair")
+                        {
+                            <span class="badge bg-dark-subtle text-dark border border-dark-subtle px-3 py-1.5 fs-6">🔧 For Repair</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 fs-6">🟢 Good</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <span class="text-muted small d-block mb-1">Remarks from Borrower</span>
+                    <div class="p-3 bg-light border rounded text-dark small font-monospace">
+                        @Model.Remarks
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.PhotoPath))
+                {
+                    <div class="mb-4">
+                        <span class="text-muted small d-block mb-2">Uploaded Photo Verification</span>
+                        <div class="border rounded overflow-hidden shadow-sm bg-light text-center p-2" style="max-width: 100%;">
+                            <img src="@Model.PhotoPath" alt="Condition verification photo" class="img-fluid rounded" style="max-height: 380px; object-fit: contain;" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Custodian Review Form -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-patch-check me-2 text-warning"></i>Custodian Evaluation & Action</h6>
+            </div>
+            <div class="card-body p-4">
+                <form action="/ConditionMonitoring/Review" method="post" class="needs-validation" novalidate>
+                    <input type="hidden" name="id" value="@Model.ReportId" />
+
+                    @if (Model.Status != "Pending")
+                    {
+                        <div class="alert alert-secondary border-0 mb-4 py-2 px-3 small">
+                            <i class="bi bi-info-circle me-2"></i>This report has already been reviewed by <strong>@Model.ReviewedBy</strong> on @Model.DateReviewed?.ToString("MM/dd/yyyy").
+                        </div>
+                    }
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark">Reviewer Remarks / Notes</label>
+                        @if (Model.Status == "Pending")
+                        {
+                            <textarea name="custodianRemarks" rows="3" class="form-control" placeholder="Write feedback, repair instructions, or remarks for this review..." required></textarea>
+                            <div class="invalid-feedback">
+                                Please provide review comments or instructions.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-3 bg-light border rounded text-muted small">
+                                @Model.CustodianRemarks
+                            </div>
+                        }
+                    </div>
+
+                    @if (Model.Status == "Pending")
+                    {
+                        <div class="d-flex flex-wrap gap-2 border-top pt-3 justify-content-end">
+                            <a href="/ConditionMonitoring" class="btn btn-outline-secondary px-3">Cancel</a>
+                            
+                            <!-- Action button routing -->
+                            @if (Model.Condition == "Minor Damage" || Model.Condition == "Good")
+                            {
+                                <button type="submit" name="action" value="Approve" class="btn btn-success px-3">
+                                    <i class="bi bi-check-circle me-1"></i> Approve (Continue Borrowing)
+                                </button>
+                            }
+                            
+                            @if (Model.Condition != "Good")
+                            {
+                                <button type="submit" name="action" value="RequestReturn" class="btn btn-danger px-3">
+                                    <i class="bi bi-arrow-return-left me-1"></i> Request Immediate Return
+                                </button>
+                            }
+
+                            @if (Model.Condition == "For Repair" || Model.Condition == "Critical Damage")
+                            {
+                                <button type="submit" name="action" value="SendToMaintenance" class="btn btn-dark px-3">
+                                    <i class="bi bi-wrench-adjustable me-1"></i> Route to Maintenance/Repair
+                                </button>
+                            }
+                        </div>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Sidebar -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4 bg-light-subtle">
+            <div class="card-header bg-light py-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-info-circle me-2 text-muted"></i>Borrower & Asset Details</h6>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Borrower Name</span>
+                    <strong class="text-dark">@Model.Lending?.BorrowerName</strong>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Student ID</span>
+                    <strong class="text-dark">@Model.Lending?.StudentId</strong>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Asset Category</span>
+                    <strong class="text-dark">@Model.Lending?.Property?.Category</strong>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Date Borrowed</span>
+                    <strong class="text-dark">@Model.Lending?.DateBorrowed.ToString("MMMM dd, yyyy")</strong>
+                </div>
+                <div class="mb-0">
+                    <span class="text-muted small d-block">Due Date</span>
+                    <strong class="text-danger">@Model.Lending?.DueDate.ToString("MMMM dd, yyyy")</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Timeline -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light py-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-muted"></i>Condition History during this loan</h6>
+            </div>
+            <div class="card-body p-4">
+                @if (toolHistory == null || !toolHistory.Any())
+                {
+                    <p class="text-muted small text-center mb-0">No previous reports for this tool.</p>
+                }
+                else
+                {
+                    <div class="timeline">
+                        @foreach (var log in toolHistory)
+                        {
+                            <div class="timeline-item pb-3 position-relative ps-4">
+                                <div class="timeline-dot position-absolute start-0 top-0 mt-1 rounded-circle bg-white border border-2 border-indigo-600" style="width: 12px; height: 12px;"></div>
+                                <span class="d-block small text-muted">@log.DateSubmitted?.ToString("MMMM dd, yyyy")</span>
+                                <strong class="text-dark small d-block">
+                                    @if (log.Condition == "Good")
+                                    {
+                                        <span class="text-success">🟢 Good</span>
+                                    }
+                                    else if (log.Condition == "Minor Damage")
+                                    {
+                                        <span class="text-warning">🟡 Minor Damage</span>
+                                    }
+                                    else if (log.Condition == "Critical Damage")
+                                    {
+                                        <span class="text-danger">🔴 Critical Damage</span>
+                                    }
+                                    else if (log.Condition == "For Repair")
+                                    {
+                                        <span class="text-secondary">🔧 For Repair</span>
+                                    }
+                                    @if (log.IsScheduled)
+                                    {
+                                        <span class="text-muted font-monospace small" style="font-size: 10px;">(Report #@log.ReportNumber)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger font-monospace small" style="font-size: 10px;">(Incident)</span>
+                                    }
+                                </strong>
+                                <span class="text-muted d-block small mt-1">@log.Remarks</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        background-color: #e2e8f0;
+    }
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 12px;
+        bottom: -12px;
+        width: 2px;
+        background-color: #e2e8f0;
+    }
+    .timeline-item:last-child::after {
+        display: none;
+    }
+    .border-indigo-600 {
+        border-color: #4f46e5 !important;
+    }
+    .text-indigo-600 {
+        color: #4f46e5;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        // Bootstrap form validation
+        (() => {
+            'use strict'
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false)
+            })
+        })();
+    </script>
+}

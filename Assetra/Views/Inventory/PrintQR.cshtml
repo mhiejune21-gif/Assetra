@@ -1,0 +1,93 @@
+@model Assetra.Models.Property
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Print QR Code - @Model.PropertyId</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .print-container {
+            background-color: white;
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            max-width: 380px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .qr-image {
+            max-width: 220px;
+            margin-bottom: 20px;
+        }
+        .btn-print {
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .btn-print:hover {
+            background-color: #4338ca;
+            color: white;
+        }
+        
+        @@media print {
+            body {
+                background-color: white;
+                min-height: auto;
+            }
+            .print-container {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                margin: 0 auto;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="print-container">
+        <h4 class="fw-bold mb-1 text-dark">@Model.Name</h4>
+        <div class="text-muted font-monospace small mb-4">Tool ID: @Model.PropertyId</div>
+        
+        <img src="@Model.QrCodePath" class="qr-image img-fluid" alt="QR Code" />
+        
+        <div class="small text-muted mb-4">
+            Scan this code to Borrow or Return this school tool.
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 no-print">
+            <button onclick="window.print();" class="btn btn-print"><i class="bi bi-printer me-2"></i>Print now</button>
+            <button onclick="window.close();" class="btn btn-outline-secondary">Close Window</button>
+        </div>
+    </div>
+
+    <script>
+        // Auto open print dialog on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

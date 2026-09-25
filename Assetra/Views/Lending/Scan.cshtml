@@ -1,0 +1,408 @@
+@{
+    ViewData["Title"] = "Scan QR Code";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Scan Tool QR Code</h4>
+        <p class="text-muted small mb-0">Use your camera or upload an image of a tool's QR code to Borrow or Return it.</p>
+    </div>
+    <a href="/Lending" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back to History</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5 mb-4">
+        <div class="card border-0 shadow-sm overflow-hidden">
+            <div class="card-header bg-dark text-white text-center py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-camera me-2 text-warning"></i>Live Camera Feed / Upload</h6>
+            </div>
+            <div class="card-body p-4 text-center bg-light">
+                <!-- Scanner target element -->
+                <div id="reader" class="rounded shadow-sm overflow-hidden mx-auto mb-3" style="width: 100%; max-width: 380px; min-height: 260px; background-color: #0f172a;"></div>
+                
+                <!-- Status & Feedback -->
+                <div id="scan-status" class="alert alert-info mt-3 py-2 small d-none" role="alert">
+                    <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                    <span>Identifying tool...</span>
+                </div>
+
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger mt-3 py-2 small border-0 text-danger" style="background-color: #fef2f2;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+                    </div>
+                }
+
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success mt-3 py-2 small border-0 text-success" style="background-color: #f0fdf4;">
+                        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+                    </div>
+                }
+
+                <!-- One-Tap Mobile Camera Capture (Works 100% Offline & on any HTTP/HTTPS) -->
+                <div id="mobile-photo-capture" class="mt-2">
+                    <button type="button" id="snap-camera-btn" class="btn btn-indigo shadow-sm py-2 px-3 fw-bold w-100">
+                        <i class="bi bi-camera-fill me-2"></i> Take Photo of QR Code
+                    </button>
+                    <!-- Native phone camera input: opens device camera directly -->
+                    <input type="file" id="qr-camera-input" accept="image/*" capture="environment" class="d-none" />
+                </div>
+
+                <!-- Gallery / File Upload Alternative -->
+                <div class="mt-2">
+                    <button type="button" id="toggle-file-btn" class="btn btn-link btn-sm text-decoration-none text-muted p-0">
+                        <i class="bi bi-image me-1"></i> Or choose photo from gallery
+                    </button>
+                    <input type="file" id="qr-gallery-input" accept="image/*" class="d-none" />
+                </div>
+
+                <!-- Live Camera Switcher (If multiple cameras available) -->
+                <div id="camera-controls-container" class="camera-controls mt-3 d-none">
+                    <label class="form-label text-muted small fw-semibold mb-1">Select Camera Source</label>
+                    <select id="camera-select" class="form-select form-select-sm mx-auto" style="max-width: 280px;">
+                        <option value="">Detecting cameras...</option>
+                    </select>
+                </div>
+
+                <!-- Fallback Notice for Insecure HTTP on mobile -->
+                <div id="camera-notice" class="alert alert-warning border-0 py-2 px-3 mt-3 small text-dark d-none" style="background-color: #fef9c3;">
+                    <i class="bi bi-info-circle-fill me-1 text-warning"></i>
+                    <span id="camera-notice-text">Live video stream unavailable. Tap "Take Photo of QR Code" above to scan instantly with your camera!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Column -->
+    <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h5 class="fw-bold text-dark mb-4"><i class="bi bi-info-circle text-indigo-600 me-2"></i>How it works</h5>
+                
+                <div class="d-flex align-items-start mb-4">
+                    <span class="badge bg-indigo-50 text-indigo-600 rounded p-2 me-3 fs-5 font-monospace">1</span>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">Grant Camera Access</h6>
+                        <p class="text-muted small mb-0">Allow the browser to use your camera device when prompted, or choose to upload an image of the QR code.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-4">
+                    <span class="badge bg-indigo-50 text-indigo-600 rounded p-2 me-3 fs-5 font-monospace">2</span>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">Position QR Code</h6>
+                        <p class="text-muted small mb-0">Place the printed QR code tag within Kestrel's square camera overlay, or choose a file to decode.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-4">
+                    <span class="badge bg-indigo-50 text-indigo-600 rounded p-2 me-3 fs-5 font-monospace">3</span>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">Automatic Routing</h6>
+                        <p class="text-muted small mb-0">The system automatically decodes the Tool ID and routes you:
+                            <span class="d-block mt-1">
+                                <i class="bi bi-dot text-indigo-600"></i><strong>Available Tools</strong> go to the Borrow form.
+                            </span>
+                            <span>
+                                <i class="bi bi-dot text-indigo-600"></i><strong>Borrowed Tools</strong> go to the Return form.
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded border small text-muted">
+                    <i class="bi bi-shield-lock me-1"></i><strong>Security Reminder:</strong> QR codes only contain unique, non-sensitive IDs. Transaction approvals require teacher verification.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-indigo-50 { background-color: #e0e7ff; }
+    .text-indigo-600 { color: #4f46e5; }
+    .btn-outline-indigo {
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+    .btn-outline-indigo:hover {
+        background-color: #6366f1;
+        color: #fff;
+    }
+    #reader video {
+        object-fit: cover !important;
+        border-radius: 8px;
+    }
+</style>
+
+@section Scripts {
+    <!-- Local Offline QR Scanner Library (Never needs internet) -->
+    <script src="~/lib/html5-qrcode/html5-qrcode.min.js"></script>
+    <script>
+        let html5QrCode = null;
+        const statusEl = document.getElementById("scan-status");
+        const snapCameraBtn = document.getElementById("snap-camera-btn");
+        const qrCameraInput = document.getElementById("qr-camera-input");
+        const toggleFileBtn = document.getElementById("toggle-file-btn");
+        const qrGalleryInput = document.getElementById("qr-gallery-input");
+        const cameraControls = document.getElementById("camera-controls-container");
+        const cameraNotice = document.getElementById("camera-notice");
+        const cameraNoticeText = document.getElementById("camera-notice-text");
+
+        // 1. One-tap Mobile Camera Snap (Opens native phone camera)
+        if (snapCameraBtn && qrCameraInput) {
+            snapCameraBtn.addEventListener("click", () => {
+                qrCameraInput.click();
+            });
+        }
+
+        // 2. Choose from gallery
+        if (toggleFileBtn && qrGalleryInput) {
+            toggleFileBtn.addEventListener("click", () => {
+                qrGalleryInput.click();
+            });
+        }
+
+        // Helper function to scale and rotate high-res camera photos for QR detection
+        function processImageFile(file, maxDimension = 1000, angle = 0) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Scale down high-resolution mobile photos
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+
+                    if (angle === 90 || angle === 270) {
+                        canvas.width = height;
+                        canvas.height = width;
+                    } else {
+                        canvas.width = width;
+                        canvas.height = height;
+                    }
+
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate((angle * Math.PI) / 180);
+
+                    if (angle === 90 || angle === 270) {
+                        ctx.drawImage(img, -height / 2, -width / 2, height, width);
+                    } else {
+                        ctx.drawImage(img, -width / 2, -height / 2, width, height);
+                    }
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const processedFile = new File([blob], "qr_scan.jpg", { type: "image/jpeg" });
+                            resolve(processedFile);
+                        } else {
+                            reject(new Error("Canvas blob error"));
+                        }
+                    }, "image/jpeg", 0.92);
+                };
+                img.onerror = (err) => reject(err);
+                img.src = url;
+            });
+        }
+
+        // 3. Decode an image file (from camera snap or gallery) with Native BarcodeDetector + Multi-Pass Fallbacks
+        async function decodeImage(file) {
+            if (!file) return;
+            statusEl.classList.remove("d-none");
+            statusEl.querySelector("span").textContent = "Decoding QR code from photo...";
+
+            // Engine 1: Native Android/Chrome BarcodeDetector API (Super fast & accurate)
+            if ('BarcodeDetector' in window) {
+                try {
+                    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                    const bitmap = await createImageBitmap(file);
+                    const barcodes = await detector.detect(bitmap);
+                    if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                        statusEl.classList.add("d-none");
+                        handleDecodedResult(barcodes[0].rawValue);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Native BarcodeDetector direct pass failed, trying preprocessed passes...", e);
+                }
+            }
+
+            // Engine 2: Html5Qrcode direct file scan
+            const scanner = new Html5Qrcode("reader");
+            try {
+                const decodedText = await scanner.scanFile(file, true);
+                statusEl.classList.add("d-none");
+                handleDecodedResult(decodedText);
+                return;
+            } catch (e) {
+                // Continue to multi-resolution & rotation preprocessing
+            }
+
+            // Engine 3: Smart multi-resolution & rotation pass (Handles 12MP+ photos and vertical orientations)
+            const dimensions = [1200, 800, 500];
+            const angles = [0, 90, 270, 180];
+
+            for (const dim of dimensions) {
+                for (const angle of angles) {
+                    try {
+                        const processedFile = await processImageFile(file, dim, angle);
+
+                        // Try native detector on resized/rotated canvas image
+                        if ('BarcodeDetector' in window) {
+                            try {
+                                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                                const bitmap = await createImageBitmap(processedFile);
+                                const barcodes = await detector.detect(bitmap);
+                                if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                                    statusEl.classList.add("d-none");
+                                    handleDecodedResult(barcodes[0].rawValue);
+                                    return;
+                                }
+                            } catch (e) {}
+                        }
+
+                        // Try Html5Qrcode on resized/rotated file
+                        const decodedText = await scanner.scanFile(processedFile, true);
+                        statusEl.classList.add("d-none");
+                        handleDecodedResult(decodedText);
+                        return;
+                    } catch (err) {
+                        // Try next angle/resolution pass
+                    }
+                }
+            }
+
+            statusEl.classList.add("d-none");
+            alert("Could not detect a clear QR code from that photo.\n\nTips for a clear photo scan:\n1. Hold your camera closer so the QR code fills most of the frame.\n2. Ensure good lighting and keep the camera steady.\n3. Avoid heavy reflections or shadows over the QR code.");
+        }
+
+        if (qrCameraInput) {
+            qrCameraInput.addEventListener("change", (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    decodeImage(e.target.files[0]);
+                }
+            });
+        }
+
+        if (qrGalleryInput) {
+            qrGalleryInput.addEventListener("change", (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    decodeImage(e.target.files[0]);
+                }
+            });
+        }
+
+        // 4. Live Camera Streaming (Works on HTTPS, localhost, or supported browsers)
+        async function startScanning() {
+            if (typeof Html5Qrcode === "undefined") {
+                cameraNotice.classList.remove("d-none");
+                cameraNoticeText.textContent = "Scanner library is loading. Please tap 'Take Photo of QR Code' above.";
+                return;
+            }
+
+            // Check if mediaDevices is supported in current context
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                cameraNotice.classList.remove("d-none");
+                cameraNoticeText.textContent = "Live video stream requires HTTPS. Tap 'Take Photo of QR Code' above to scan with your phone camera!";
+                return;
+            }
+
+            try {
+                html5QrCode = new Html5Qrcode("reader");
+                const config = { 
+                    fps: 10, 
+                    qrbox: { width: 220, height: 220 } 
+                };
+
+                // Attempt to start with environment (back) camera directly
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (decodedText) => handleDecodedResult(decodedText),
+                    () => {} // suppress continuous scan noise
+                );
+
+                // If successful, check if device selection is useful
+                try {
+                    const devices = await Html5Qrcode.getCameras();
+                    const selectEl = document.getElementById("camera-select");
+                    if (devices && devices.length > 1) {
+                        selectEl.innerHTML = "";
+                        devices.forEach((device, index) => {
+                            const option = document.createElement("option");
+                            option.value = device.id;
+                            option.text = device.label || `Camera ${index + 1}`;
+                            selectEl.appendChild(option);
+                        });
+                        cameraControls.classList.remove("d-none");
+
+                        selectEl.addEventListener("change", async (e) => {
+                            if (html5QrCode && html5QrCode.isScanning) {
+                                await html5QrCode.stop();
+                            }
+                            await html5QrCode.start(e.target.value, config, handleDecodedResult, () => {});
+                        });
+                    }
+                } catch (e) {
+                    // Ignore device enumeration issues
+                }
+            } catch (err) {
+                console.warn("Live camera start error: ", err);
+                cameraNotice.classList.remove("d-none");
+                cameraNoticeText.textContent = "Live camera stream unavailable. Tap 'Take Photo of QR Code' above to scan with your camera!";
+            }
+        }
+
+        function handleDecodedResult(decodedText) {
+            console.log("Code scanned:", decodedText);
+            
+            const action = () => {
+                statusEl.classList.remove("d-none");
+                statusEl.querySelector("span").textContent = "Identified! Loading tool...";
+
+                let toolId = decodedText.trim();
+                if (toolId.includes("/Details/")) {
+                    const parts = toolId.split("/");
+                    toolId = parts[parts.length - 1];
+                }
+
+                window.location.href = `/Lending/IdentifyTool?propertyId=${encodeURIComponent(toolId)}`;
+            };
+
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(action).catch(err => {
+                    console.error("Failed to stop camera:", err);
+                    action();
+                });
+            } else {
+                action();
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            startScanning();
+        });
+
+        window.addEventListener("beforeunload", () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop();
+            }
+        });
+    </script>
+}

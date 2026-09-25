@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "Inventory Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h4 class="mb-4">Inventory Report</h4>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Total</h6>
+            <h3>@ViewBag.TotalItems</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Available</h6>
+            <h3 class="text-success">@ViewBag.Available</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>On Loan</h6>
+            <h3 class="text-warning">@ViewBag.OnLoan</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <h6>Damaged</h6>
+            <h3 class="text-danger">@ViewBag.Damaged</h3>
+        </div>
+    </div>
+</div>
+
+<table class="table table-bordered bg-white">
+    <thead class="table-dark">
+        <tr>
+            <th>Property ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Condition</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.Items as List<Assetra.Models.Property>)
+        {
+            <tr>
+                <td>@item.PropertyId</td>
+                <td>@item.Name</td>
+                <td>@item.Category</td>
+                <td>@item.Location</td>
+                <td>@item.Status</td>
+                <td>@item.ConditionStatus</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Reports" class="btn btn-secondary">Back to Reports</a>

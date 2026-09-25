@@ -1,0 +1,79 @@
+@model Assetra.Models.User
+@{
+    ViewData["Title"] = "Add User";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Add New User</h4>
+    <a href="/Users" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to List</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger d-flex align-items-center mb-4 py-2 px-3 border-0 rounded" role="alert" style="background-color: #ffebee; color: #c62828;">
+                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                        <div>@ViewBag.Error</div>
+                    </div>
+                }
+
+                <form method="post" action="/Users/Create">
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-semibold" style="font-size: 13px;">Username</label>
+                        <input type="text" name="Username" class="form-control" placeholder="Enter username" value="@Model?.Username" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-semibold" style="font-size: 13px;">Full Name</label>
+                        <input type="text" name="FullName" class="form-control" placeholder="Enter full name" value="@Model?.FullName" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-semibold" style="font-size: 13px;">Password</label>
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" class="form-control" placeholder="Enter password" required />
+                            <button class="btn btn-outline-secondary border-start-0" style="border-color: #dee2e6;" type="button" id="togglePasswordBtn">
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-semibold" style="font-size: 13px;">Role</label>
+                        <select name="Role" class="form-select" required>
+                            <option value="User" selected="@(Model?.Role == "User")">User</option>
+                            <option value="Admin" selected="@(Model?.Role == "Admin")">Admin</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                        <i class="bi bi-person-check me-1"></i> Save User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const togglePasswordBtn = document.getElementById("togglePasswordBtn");
+            const passwordInput = document.getElementById("password");
+            const toggleIcon = document.getElementById("toggleIcon");
+
+            if (togglePasswordBtn && passwordInput && toggleIcon) {
+                togglePasswordBtn.addEventListener("click", function () {
+                    const isPassword = passwordInput.getAttribute("type") === "password";
+                    passwordInput.setAttribute("type", isPassword ? "text" : "password");
+                    toggleIcon.classList.toggle("bi-eye");
+                    toggleIcon.classList.toggle("bi-eye-slash");
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,285 @@
+@model Assetra.Models.LendingRecord
+@{
+    ViewData["Title"] = "Borrow Tool";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var properties = ViewBag.Properties as List<Assetra.Models.Property> ?? new List<Assetra.Models.Property>();
+    var users = ViewBag.Users as List<Assetra.Models.User> ?? new List<Assetra.Models.User>();
+    var role = Context.Session.GetString("Role");
+    var studentInfo = ViewBag.StudentInfo as Assetra.Models.User;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Process Tool Borrowing</h4>
+        <p class="text-muted small mb-0">Record and verify a tool borrowing transaction.</p>
+    </div>
+    <a href="/Lending" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back to History</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger mb-4 py-2 px-3 border-0 rounded text-danger small" style="background-color: #fef2f2;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+                    </div>
+                }
+
+                <form id="borrowForm" method="post" action="/Lending/Create">
+                    <!-- Tool Selection -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold small text-uppercase">1. Selected Tool</label>
+                        <select name="PropertyId" id="propertySelect" class="form-select border-2" required>
+                            <option value="">-- Choose Tool --</option>
+                            @foreach (var prop in properties)
+                            {
+                                <option value="@prop.PropertyId" 
+                                        data-name="@prop.Name"
+                                        data-condition="@prop.ConditionStatus"
+                                        selected="@(prop.PropertyId == ViewBag.SelectedPropertyId)">
+                                    [@prop.PropertyId] @prop.Name (Condition: @prop.ConditionStatus)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Borrower Information -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold small text-uppercase">2. Borrower Details</label>
+                        
+                        @if (role == "Admin")
+                        {
+                            <!-- Teacher processing borrow -->
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Select Registered Student</label>
+                                <select name="BorrowedBy" id="studentSelect" class="form-select">
+                                    <option value="">-- Manual Entry (Not Registered) --</option>
+                                    @foreach (var usr in users)
+                                    {
+                                        <option value="@usr.UserId" data-fullname="@usr.FullName" data-studentid="@usr.Username">
+                                            @usr.FullName (ID: @usr.Username)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label small text-muted">Student Name</label>
+                                    <input type="text" name="BorrowerName" id="borrowerNameInput" class="form-control" placeholder="Enter student's full name" required />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label small text-muted">Student ID</label>
+                                    <input type="text" name="StudentId" id="studentIdInput" class="form-control" placeholder="Enter student's school ID" required />
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Student borrowing themselves -->
+                            <input type="hidden" name="BorrowedBy" value="@studentInfo?.UserId" />
+                            <input type="hidden" name="BorrowerName" value="@studentInfo?.FullName" />
+                            <input type="hidden" name="StudentId" value="@studentInfo?.Username" />
+
+                            <div class="p-3 bg-light rounded border">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2 mb-md-0">
+                                        <span class="text-muted small d-block">Student Name:</span>
+                                        <strong>@studentInfo?.FullName</strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="text-muted small d-block">Student ID:</span>
+                                        <strong class="font-monospace">@studentInfo?.Username</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Return Dates -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold small text-uppercase">3. Loan Schedule</label>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Date Borrowed</label>
+                                <input type="text" class="form-control bg-light" value="@DateTime.Today.ToString("yyyy-MM-dd")" readonly />
+                                <input type="hidden" name="DateBorrowed" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Expected Return Date</label>
+                                <input type="date" name="DueDate" id="dueDateInput" class="form-control border-2" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" min="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-top pt-4">
+                        <button type="button" id="btnSubmitCheck" class="btn btn-indigo w-100 py-2 shadow-sm fw-bold">
+                            <i class="bi bi-check-circle me-1"></i> Proceed to Confirmation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmBorrowModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-indigo text-white py-3">
+                <h5 class="modal-title fw-bold" id="confirmModalLabel"><i class="bi bi-question-circle me-2"></i>Confirm Borrowing Transaction</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-4">Please review and confirm the borrowing transaction details below:</p>
+                
+                <div class="mb-3 border-bottom pb-2">
+                    <span class="text-muted small d-block">Tool / Equipment:</span>
+                    <strong id="summaryToolName" class="text-indigo-900"></strong>
+                    <span id="summaryToolId" class="text-muted small font-monospace d-block"></span>
+                </div>
+
+                <div class="mb-3 border-bottom pb-2">
+                    <span class="text-muted small d-block">Student Borrower:</span>
+                    <strong id="summaryStudentName" class="text-slate-800"></strong>
+                    <span id="summaryStudentId" class="text-muted small font-monospace d-block"></span>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <span class="text-muted small d-block">Initial Condition:</span>
+                        <span id="summaryCondition" class="badge bg-success"></span>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted small d-block">Expected Return:</span>
+                        <strong id="summaryDueDate" class="text-indigo-600"></strong>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning py-2 small border-0 mt-4 mb-0" style="background-color: #fffbeb; color: #b45309;">
+                    <i class="bi bi-info-circle me-2"></i>
+                    @if (role == "Admin")
+                    {
+                        <span>This tool's status will instantly change to <strong>Borrowed</strong> upon confirmation.</span>
+                    }
+                    else
+                    {
+                        <span>A borrowing request will be created pending teacher approval.</span>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="btnConfirmSubmit" class="btn btn-indigo px-4">Confirm & Finalize</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+    .bg-indigo {
+        background-color: #4f46e5;
+    }
+    .text-indigo-900 {
+        color: #312e81;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const role = "@role";
+            const confirmModal = new bootstrap.Modal(document.getElementById('confirmBorrowModal'));
+            
+            const btnSubmitCheck = document.getElementById("btnSubmitCheck");
+            const btnConfirmSubmit = document.getElementById("btnConfirmSubmit");
+            const borrowForm = document.getElementById("borrowForm");
+
+            if (role === "Admin") {
+                const studentSelect = document.getElementById("studentSelect");
+                const borrowerNameInput = document.getElementById("borrowerNameInput");
+                const studentIdInput = document.getElementById("studentIdInput");
+
+                studentSelect.addEventListener("change", function () {
+                    const selectedOpt = studentSelect.options[studentSelect.selectedIndex];
+                    if (selectedOpt && selectedOpt.value) {
+                        borrowerNameInput.value = selectedOpt.getAttribute("data-fullname");
+                        studentIdInput.value = selectedOpt.getAttribute("data-studentid");
+                        borrowerNameInput.setAttribute("readonly", "readonly");
+                        studentIdInput.setAttribute("readonly", "readonly");
+                    } else {
+                        borrowerNameInput.value = "";
+                        studentIdInput.value = "";
+                        borrowerNameInput.removeAttribute("readonly");
+                        studentIdInput.removeAttribute("readonly");
+                    }
+                });
+            }
+
+            // Trigger validation and show modal
+            btnSubmitCheck.addEventListener("click", function () {
+                if (!borrowForm.checkValidity()) {
+                    borrowForm.reportValidity();
+                    return;
+                }
+
+                // Gather details for summary
+                const propertySelect = document.getElementById("propertySelect");
+                const selectedToolOpt = propertySelect.options[propertySelect.selectedIndex];
+                const toolName = selectedToolOpt.getAttribute("data-name");
+                const toolId = selectedToolOpt.value;
+                const toolCondition = selectedToolOpt.getAttribute("data-condition");
+
+                let studentName = "";
+                let studentId = "";
+
+                if (role === "Admin") {
+                    studentName = document.getElementById("borrowerNameInput").value;
+                    studentId = document.getElementById("studentIdInput").value;
+                } else {
+                    studentName = borrowForm.querySelector("input[name='BorrowerName']").value;
+                    studentId = borrowForm.querySelector("input[name='StudentId']").value;
+                }
+
+                const dueDate = document.getElementById("dueDateInput").value;
+
+                // Update summary elements
+                document.getElementById("summaryToolName").innerText = toolName;
+                document.getElementById("summaryToolId").innerText = `ID: ${toolId}`;
+                document.getElementById("summaryStudentName").innerText = studentName;
+                document.getElementById("summaryStudentId").innerText = `Student ID: ${studentId}`;
+                document.getElementById("summaryCondition").innerText = toolCondition;
+                document.getElementById("summaryDueDate").innerText = dueDate;
+
+                // Set condition color class
+                const condBadge = document.getElementById("summaryCondition");
+                condBadge.className = "badge";
+                if (toolCondition === "Good") condBadge.classList.add("bg-success");
+                else if (toolCondition === "Minor Damage") condBadge.classList.add("bg-info", "text-dark");
+                else if (toolCondition === "Damaged") condBadge.classList.add("bg-warning", "text-dark");
+                else condBadge.classList.add("bg-danger");
+
+                // Show modal
+                confirmModal.show();
+            });
+
+            // Final submit trigger
+            btnConfirmSubmit.addEventListener("click", function () {
+                confirmModal.hide();
+                borrowForm.submit();
+            });
+        });
+    </script>
+}
+

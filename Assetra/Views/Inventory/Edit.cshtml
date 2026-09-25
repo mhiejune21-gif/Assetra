@@ -1,0 +1,122 @@
+@model Assetra.Models.Property
+@{
+    ViewData["Title"] = "Edit Asset";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold text-dark">Edit Asset: @Model.PropertyId</h4>
+    <a href="/Inventory" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Inventory</a>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width: 700px;">
+    <div class="card-body p-4">
+        <form method="post" action="/Inventory/Edit" enctype="multipart/form-data">
+            <!-- Hidden Fields to preserve values -->
+            <input type="hidden" name="PropertyId" value="@Model.PropertyId" />
+            <input type="hidden" name="DateAdded" value="@Model.DateAdded.ToString("yyyy-MM-ddTHH:mm:ss.fff")" />
+            <input type="hidden" name="QrCodePath" value="@Model.QrCodePath" />
+            <input type="hidden" name="ImagePath" value="@Model.ImagePath" />
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Asset ID (Read-only)</label>
+                    <input type="text" class="form-control bg-light" value="@Model.PropertyId" disabled />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Asset Name</label>
+                    <input type="text" name="Name" class="form-control" value="@Model.Name" required />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Category</label>
+                    <select name="Category" class="form-select" required>
+                        <option value="Laboratory Equipment" selected="@(Model.Category == "Laboratory Equipment")">Laboratory Equipment</option>
+                        <option value="Hand Tools" selected="@(Model.Category == "Hand Tools")">Hand Tools</option>
+                        <option value="Measuring Tools" selected="@(Model.Category == "Measuring Tools")">Measuring Tools</option>
+                        <option value="Electronic Equipment" selected="@(Model.Category == "Electronic Equipment")">Electronic Equipment</option>
+                        <option value="Sports Equipment" selected="@(Model.Category == "Sports Equipment")">Sports Equipment</option>
+                        <option value="Other" selected="@(Model.Category == "Other")">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Storage Location</label>
+                    <input type="text" name="Location" class="form-control" value="@Model.Location" required />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Status</label>
+                    @if (Model.Status == "Maintenance")
+                    {
+                        <input type="hidden" name="Status" value="Maintenance" />
+                        <select class="form-select bg-light text-muted" disabled>
+                            <option value="Maintenance" selected>Maintenance (Locked - Under Service)</option>
+                        </select>
+                        <small class="text-danger d-block mt-1" style="font-size: 11px;"><i class="bi bi-lock-fill me-1"></i> Locked: Complete the active maintenance log in the Maintenance menu to make this tool Available.</small>
+                    }
+                    else
+                    {
+                        <select name="Status" class="form-select" required>
+                            <option value="Available" selected="@(Model.Status == "Available")">Available</option>
+                            <option value="Borrowed" selected="@(Model.Status == "Borrowed" || Model.Status == "On Loan")">Borrowed</option>
+                        </select>
+                    }
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Quantity</label>
+                    <input type="number" name="Quantity" class="form-control" value="@Model.Quantity" min="1" required />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Condition Status</label>
+                    <select name="ConditionStatus" class="form-select" required>
+                        <option value="Good" selected="@(Model.ConditionStatus == "Good")">Good</option>
+                        <option value="Minor Damage" selected="@(Model.ConditionStatus == "Minor Damage")">Minor Damage</option>
+                        <option value="Damaged" selected="@(Model.ConditionStatus == "Damaged")">Damaged</option>
+                        <option value="Missing Parts" selected="@(Model.ConditionStatus == "Missing Parts")">Missing Parts</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Description</label>
+                    <textarea name="Description" class="form-control" rows="3" placeholder="Enter tool description...">@Model.Description</textarea>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-4">
+                    <label class="form-label fw-semibold text-dark">Update Tool Image</label>
+                    <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    <small class="text-muted d-block mt-1">Select a new image file to replace the current image. Current path: <code>@Model.ImagePath</code></small>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end border-top pt-3">
+                <a href="/Inventory" class="btn btn-secondary me-2">Cancel</a>
+                <button type="submit" class="btn btn-indigo px-4 shadow-sm"><i class="bi bi-save me-1"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+</style>

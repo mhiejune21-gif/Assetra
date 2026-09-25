@@ -1,0 +1,215 @@
+@model Assetra.Models.ConditionReport
+@{
+    ViewData["Title"] = ViewBag.IsEmergency ? "Report Emergency Damage / Incident" : "Submit Scheduled Condition Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var lending = ViewBag.Lending as Assetra.Models.LendingRecord;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">
+            @if (ViewBag.IsEmergency)
+            {
+                <span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Report Damage / Incident</span>
+            }
+            else
+            {
+                <span class="text-indigo-600"><i class="bi bi-journal-check me-2"></i>Scheduled Condition Report #@Model.ReportNumber</span>
+            }
+        </h4>
+        <p class="text-muted small mb-0">Provide details on the current physical and functional status of the borrowed asset.</p>
+    </div>
+    <a href="/UserPortal" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Cancel</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-light py-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-info-circle me-2 text-muted"></i>Borrowed Tool Details</h6>
+            </div>
+            <div class="card-body p-4 bg-light-subtle">
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <span class="text-muted small d-block">Tool ID</span>
+                        <strong class="text-dark">@lending?.PropertyId</strong>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="text-muted small d-block">Tool Name</span>
+                        <strong class="text-dark">@lending?.Property?.Name</strong>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="text-muted small d-block">Date Borrowed</span>
+                        <strong class="text-dark">@lending?.DateBorrowed.ToString("MMMM dd, yyyy")</strong>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="text-muted small d-block">Due Date</span>
+                        <strong class="text-dark text-danger">@lending?.DueDate.ToString("MMMM dd, yyyy")</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form action="/ConditionMonitoring/SubmitReport" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <input type="hidden" name="lendingId" value="@lending?.LendingId" />
+                    @if (!ViewBag.IsEmergency)
+                    {
+                        <input type="hidden" name="reportId" value="@Model.ReportId" />
+                    }
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark">Condition Status Classification</label>
+                        <div class="row g-3">
+                            <div class="col-md-6 col-lg-3">
+                                <label class="condition-card text-center p-3 border rounded d-block position-relative cursor-pointer">
+                                    <input type="radio" name="condition" value="Good" required class="position-absolute opacity-0 condition-radio" />
+                                    <span class="d-block mb-1 fs-3">🟢</span>
+                                    <strong class="d-block text-success small">Good</strong>
+                                    <span class="text-muted" style="font-size: 10px;">Walang damage o issue</span>
+                                </label>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="condition-card text-center p-3 border rounded d-block position-relative cursor-pointer">
+                                    <input type="radio" name="condition" value="Minor Damage" class="position-absolute opacity-0 condition-radio" />
+                                    <span class="d-block mb-1 fs-3">🟡</span>
+                                    <strong class="d-block text-warning small">Minor Damage</strong>
+                                    <span class="text-muted" style="font-size: 10px;">May maliit na damage</span>
+                                </label>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="condition-card text-center p-3 border rounded d-block position-relative cursor-pointer">
+                                    <input type="radio" name="condition" value="Critical Damage" class="position-absolute opacity-0 condition-radio" />
+                                    <span class="d-block mb-1 fs-3">🔴</span>
+                                    <strong class="d-block text-danger small">Critical Damage</strong>
+                                    <span class="text-muted" style="font-size: 10px;">Malubhang damage</span>
+                                </label>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="condition-card text-center p-3 border rounded d-block position-relative cursor-pointer">
+                                    <input type="radio" name="condition" value="For Repair" class="position-absolute opacity-0 condition-radio" />
+                                    <span class="d-block mb-1 fs-3">🔧</span>
+                                    <strong class="d-block text-secondary small">For Repair</strong>
+                                    <span class="text-muted" style="font-size: 10px;">Requires maintenance</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="invalid-feedback d-block mt-2 small text-danger condition-error d-none">
+                            Please select a condition status.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark">Photo Upload (Required for Damage Reports)</label>
+                        <input type="file" name="photoFile" id="photoFile" accept="image/*" class="form-control" />
+                        <small class="text-muted d-block mt-1">Please upload a clear photo focusing on any reported defects, damage, or wear.</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark">Remarks / Condition Details</label>
+                        <textarea name="remarks" rows="4" class="form-control" placeholder="Describe the physical condition of the tool, notes on functionality, or details of the damage..." required></textarea>
+                        <div class="invalid-feedback">
+                            Please provide remarks or details about the tool's current condition.
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end border-top pt-3">
+                        <a href="/UserPortal" class="btn btn-outline-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-indigo px-4"><i class="bi bi-send me-1"></i> Submit Condition Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .condition-card {
+        transition: all 0.2s ease-in-out;
+        background-color: #fff;
+    }
+    .condition-card:hover {
+        border-color: #6366f1 !important;
+        background-color: #f5f3ff;
+    }
+    .condition-radio:checked + span + strong + span,
+    .condition-radio:checked ~ * {
+        color: #4f46e5;
+    }
+    .condition-card.active {
+        border-color: #4f46e5 !important;
+        background-color: #e0e7ff;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: #fff;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: #fff;
+    }
+    .text-indigo-600 {
+        color: #4f46e5;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        // Simple script to toggle visual active class on radio select
+        document.querySelectorAll('.condition-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Remove active class from all condition cards
+                document.querySelectorAll('.condition-card').forEach(card => {
+                    card.classList.remove('active');
+                });
+                
+                // Add active class to checked card
+                if (this.checked) {
+                    this.parentElement.classList.add('active');
+                }
+
+                // If damage selected, require photo upload
+                const photoInput = document.getElementById('photoFile');
+                if (this.value !== 'Good') {
+                    photoInput.setAttribute('required', 'required');
+                } else {
+                    photoInput.removeAttribute('required');
+                }
+            });
+        });
+
+        // Bootstrap form validation
+        (() => {
+            'use strict'
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    // Check if condition radio is checked
+                    const radios = form.querySelectorAll('.condition-radio');
+                    let checked = false;
+                    radios.forEach(r => { if (r.checked) checked = true; });
+
+                    const condError = document.querySelector('.condition-error');
+                    if (!checked) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        condError.classList.remove('d-none');
+                    } else {
+                        condError.classList.add('d-none');
+                    }
+
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false)
+            })
+        })();
+    </script>
+}

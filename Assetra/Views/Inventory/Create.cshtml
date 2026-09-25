@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "Add New Asset";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold text-dark">Add New Asset</h4>
+    <a href="/Inventory" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Inventory</a>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width: 700px;">
+    <div class="card-body p-4">
+        <form method="post" action="/Inventory/Create" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Asset Name</label>
+                    <input type="text" name="Name" class="form-control" placeholder="e.g. Dell Latitude 5420 Laptop" required />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Category</label>
+                    <select name="Category" class="form-select" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="Laboratory Equipment">Laboratory Equipment</option>
+                        <option value="Hand Tools">Hand Tools</option>
+                        <option value="Measuring Tools">Measuring Tools</option>
+                        <option value="Electronic Equipment">Electronic Equipment</option>
+                        <option value="Sports Equipment">Sports Equipment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Storage Location</label>
+                    <input type="text" name="Location" class="form-control" placeholder="e.g. IT Department, Room 302" required />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Quantity</label>
+                    <input type="number" name="Quantity" class="form-control" value="1" min="1" required />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-dark">Condition Status</label>
+                    <select name="ConditionStatus" class="form-select" required>
+                        <option value="Good">Good</option>
+                        <option value="Minor Damage">Minor Damage</option>
+                        <option value="Damaged">Damaged</option>
+                        <option value="Missing Parts">Missing Parts</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-semibold text-dark">Description</label>
+                    <textarea name="Description" class="form-control" rows="3" placeholder="Enter detailed description of the tool/equipment..."></textarea>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-4">
+                    <label class="form-label fw-semibold text-dark">Upload Tool Image</label>
+                    <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    <small class="text-muted d-block mt-1">Select an image file (JPG, PNG, GIF) to upload. If left empty, a default placeholder image will be assigned.</small>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end border-top pt-3">
+                <a href="/Inventory" class="btn btn-secondary me-2">Cancel</a>
+                <button type="submit" class="btn btn-indigo px-4 shadow-sm"><i class="bi bi-save me-1"></i> Save Asset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+</style>

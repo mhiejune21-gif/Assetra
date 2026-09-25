@@ -1,0 +1,288 @@
+@{
+    ViewData["Title"] = "Dashboard Overview";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var recentTransactions = ViewBag.RecentTransactions as List<Assetra.Models.LendingRecord> ?? new List<Assetra.Models.LendingRecord>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-indigo-900 mb-1" style="color: #0f172a;">School Borrowing Dashboard</h3>
+        <p class="text-muted small mb-0">Overview of inventory, active tool borrowing, returns, and conditions.</p>
+    </div>
+    <div class="date-badge px-3 py-2 bg-white rounded shadow-sm text-muted font-monospace small">
+        <i class="bi bi-calendar3 me-2 text-indigo-600"></i>@DateTime.Today.ToString("dd MMMM yyyy")
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100 position-relative overflow-hidden" style="border-left: 5px solid #6366f1 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase tracking-wider text-muted fw-bold mb-1" style="font-size: 11px;">Total Tools</h6>
+                        <h2 class="display-6 fw-bold mb-0 text-slate-850">@ViewBag.TotalItems</h2>
+                    </div>
+                    <div class="stat-icon bg-indigo-50 text-indigo-600 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-box-seam fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100 position-relative overflow-hidden" style="border-left: 5px solid #10b981 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase tracking-wider text-muted fw-bold mb-1" style="font-size: 11px;">Available</h6>
+                        <h2 class="display-6 fw-bold mb-0 text-slate-850">@ViewBag.AvailableItems</h2>
+                    </div>
+                    <div class="stat-icon bg-emerald-50 text-emerald-600 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-check2-circle fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100 position-relative overflow-hidden" style="border-left: 5px solid #f59e0b !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase tracking-wider text-muted fw-bold mb-1" style="font-size: 11px;">Borrowed</h6>
+                        <h2 class="display-6 fw-bold mb-0 text-slate-850">@ViewBag.BorrowedItems</h2>
+                    </div>
+                    <div class="stat-icon bg-amber-50 text-amber-600 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-left-right fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100 position-relative overflow-hidden" style="border-left: 5px solid #06b6d4 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase tracking-wider text-muted fw-bold mb-1" style="font-size: 11px;">Pending</h6>
+                        <h2 class="display-6 fw-bold mb-0 text-slate-850">@ViewBag.PendingRequests</h2>
+                    </div>
+                    <div class="stat-icon bg-cyan-50 text-cyan-600 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-clock-history fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg">
+        <div class="card stat-card shadow-sm border-0 h-100 position-relative overflow-hidden" style="border-left: 5px solid #ef4444 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase tracking-wider text-muted fw-bold mb-1" style="font-size: 11px;">Overdue</h6>
+                        <h2 class="display-6 fw-bold mb-0 text-slate-850">@ViewBag.OverdueItems</h2>
+                    </div>
+                    <div class="stat-icon bg-rose-50 text-rose-600 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-exclamation-octagon fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart Column -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="fw-bold mb-0 text-indigo-900" style="font-size: 16px;"><i class="bi bi-pie-chart text-indigo-600 me-2"></i>Tool Conditions</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <div style="position: relative; height:220px; width:220px;" class="mb-3">
+                    <canvas id="conditionChart"></canvas>
+                </div>
+                <div class="w-100 font-monospace small px-2 mt-2">
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span><i class="bi bi-circle-fill me-2" style="color:#10b981;"></i>Good:</span>
+                        <strong>@ViewBag.Good</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span><i class="bi bi-circle-fill me-2" style="color:#3b82f6;"></i>Minor Damage:</span>
+                        <strong>@ViewBag.MinorDamage</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span><i class="bi bi-circle-fill me-2" style="color:#f59e0b;"></i>Damaged:</span>
+                        <strong>@ViewBag.Damaged</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span><i class="bi bi-circle-fill me-2" style="color:#ef4444;"></i>Missing Parts:</span>
+                        <strong>@ViewBag.MissingParts</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions Table Column -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-indigo-900" style="font-size: 16px;"><i class="bi bi-arrow-left-right text-indigo-600 me-2"></i>Recent Transactions</h5>
+                <a href="/Lending" class="btn btn-sm btn-outline-indigo px-3">View All History</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 bg-white">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Tool</th>
+                                <th>Borrower</th>
+                                <th>Date Borrowed</th>
+                                <th>Return Date</th>
+                                <th>Status</th>
+                                <th class="pe-4">Condition</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!recentTransactions.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="bi bi-receipt fs-2 d-block mb-2"></i>
+                                        No recent transactions.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var record in recentTransactions)
+                                {
+                                    bool isOverdue = record.Status != "Returned" && record.Status != "Rejected" && record.DueDate < DateTime.Today;
+                                    <tr>
+                                        <td class="ps-4">
+                                            <span class="fw-semibold text-indigo-900 d-block">@record.Property?.Name</span>
+                                            <span class="text-muted font-monospace small">@record.PropertyId</span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-semibold text-slate-800 d-block">@record.BorrowerName</span>
+                                            <span class="text-muted small font-monospace">@record.StudentId</span>
+                                        </td>
+                                        <td class="small text-muted">@record.DateBorrowed.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td class="small text-muted">
+                                            @if (record.DateReturned.HasValue)
+                                            {
+                                                <span>@record.DateReturned.Value.ToString("yyyy-MM-dd HH:mm")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-semibold @(isOverdue ? "text-danger" : "text-muted")">Due: @record.DueDate.ToString("yyyy-MM-dd")</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (record.Status == "Pending")
+                                            {
+                                                <span class="badge rounded-pill bg-cyan-100 text-cyan-800 border border-cyan-200">Pending</span>
+                                            }
+                                            else if (record.Status == "Returned")
+                                            {
+                                                <span class="badge rounded-pill bg-emerald-100 text-emerald-800 border border-emerald-200">Returned</span>
+                                            }
+                                            else if (isOverdue)
+                                            {
+                                                <span class="badge rounded-pill bg-rose-100 text-rose-800 border border-rose-200">Overdue</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge rounded-pill bg-amber-100 text-amber-800 border border-amber-200">Borrowed</span>
+                                            }
+                                        </td>
+                                        <td class="pe-4">
+                                            @if (record.Status == "Returned")
+                                            {
+                                                <span class="small text-muted d-block">In: <strong class="text-indigo-600">@record.ReturnedCondition</strong></span>
+                                                <span class="small text-muted font-monospace" style="font-size: 10px;">Out: @record.BorrowedCondition</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="small text-muted">Out: <strong class="text-indigo-600">@record.BorrowedCondition</strong></span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+    }
+    .bg-indigo-50 { background-color: #e0e7ff; }
+    .text-indigo-600 { color: #4f46e5; }
+    .bg-emerald-50 { background-color: #d1fae5; }
+    .text-emerald-600 { color: #059669; }
+    .bg-amber-50 { background-color: #fef3c7; }
+    .text-amber-600 { color: #d97706; }
+    .bg-cyan-50 { background-color: #ecfeff; }
+    .text-cyan-600 { color: #0891b2; }
+    .bg-rose-50 { background-color: #ffe4e6; }
+    .text-rose-600 { color: #e11d48; }
+    .btn-outline-indigo {
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+    .btn-outline-indigo:hover {
+        background-color: #6366f1;
+        color: #fff;
+    }
+    .tracking-wider {
+        letter-spacing: 0.05em;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        new Chart(document.getElementById('conditionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Good', 'Minor Damage', 'Damaged', 'Missing Parts'],
+                datasets: [{
+                    data: [@ViewBag.Good, @ViewBag.MinorDamage, @ViewBag.Damaged, @ViewBag.MissingParts],
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                    borderWidth: 2,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    </script>
+}

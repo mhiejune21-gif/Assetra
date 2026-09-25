@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Reports";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h4 class="mb-4">Reports</h4>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <div class="card p-4">
+            <h5><i class="bi bi-box-seam"></i> Inventory Report</h5>
+            <p class="text-muted">View all property items by date range</p>
+            <form method="get" action="/Reports/InventoryReport">
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label">From</label>
+                        <input type="date" name="startDate" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">To</label>
+                        <input type="date" name="endDate" class="form-control" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Generate</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card p-4">
+            <h5><i class="bi bi-arrow-left-right"></i> Lending Report</h5>
+            <p class="text-muted">View borrowing history by date range</p>
+            <form method="get" action="/Reports/LendingReport">
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label">From</label>
+                        <input type="date" name="startDate" class="form-control" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label">To</label>
+                        <input type="date" name="endDate" class="form-control" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Generate</button>
+            </form>
+        </div>
+    </div>
+</div>

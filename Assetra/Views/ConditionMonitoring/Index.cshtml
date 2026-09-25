@@ -1,0 +1,282 @@
+@model IEnumerable<Assetra.Models.ConditionReport>
+@{
+    ViewData["Title"] = "Condition Monitoring System";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var pendingReviews = ViewBag.PendingReviews as IEnumerable<Assetra.Models.ConditionReport>;
+    var criticalAlerts = ViewBag.CriticalAlerts as IEnumerable<Assetra.Models.ConditionReport>;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Asset Condition Monitoring</h4>
+        <p class="text-muted small mb-0">Track and review real-time condition reports and incident logs submitted by borrowers.</p>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-indigo-600 text-white">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="d-block small text-indigo-100 fw-semibold">Pending Reviews</span>
+                    <h2 class="mb-0 fw-bold mt-1">@pendingReviews?.Count()</h2>
+                </div>
+                <div class="fs-1 text-indigo-200">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-danger text-white">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="d-block small text-danger-100 fw-semibold">Critical Alerts</span>
+                    <h2 class="mb-0 fw-bold mt-1">@criticalAlerts?.Count()</h2>
+                </div>
+                <div class="fs-1 text-danger-200">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-dark text-white">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="d-block small text-muted fw-semibold">Total Reports Submitted</span>
+                    <h2 class="mb-0 fw-bold mt-1">@Model.Count()</h2>
+                </div>
+                <div class="fs-1 text-muted">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 shadow-sm py-2 px-3 small text-success mb-4" style="background-color: #f0fdf4;">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+    </div>
+}
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs border-bottom mb-4" id="monitoringTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold text-dark px-3" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab"><i class="bi bi-exclamation-octagon me-1 text-warning"></i> Awaiting Review (@pendingReviews?.Count())</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold text-dark px-3" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab"><i class="bi bi-clock-history me-1 text-muted"></i> Submission Log History (@Model.Count())</button>
+    </li>
+</ul>
+
+<!-- Tabs Contents -->
+<div class="tab-content" id="monitoringTabsContent">
+    
+    <!-- Pending Reviews Tab -->
+    <div class="tab-pane fade show active" id="pending" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                @if (pendingReviews == null || !pendingReviews.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-shield-check fs-1 text-success d-block mb-2"></i>
+                        <h6 class="fw-bold mb-1">All caught up!</h6>
+                        <p class="small mb-0">There are no condition reports awaiting review.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-0 px-4 py-3 text-muted small fw-bold">Tool ID & Name</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Borrower Details</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Date Submitted</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Reported Condition</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Report Type</th>
+                                    <th class="border-0 px-4 py-3 text-muted small fw-bold text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var report in pendingReviews)
+                                {
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="d-block fw-bold text-dark">@report.Lending?.PropertyId</span>
+                                            <span class="text-muted small">@report.Lending?.Property?.Name</span>
+                                        </td>
+                                        <td>
+                                            <span class="d-block fw-semibold text-dark">@report.Lending?.BorrowerName</span>
+                                            <span class="text-muted small">Student ID: @report.Lending?.StudentId</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-dark small">@report.DateSubmitted?.ToString("MMMM dd, yyyy")</span>
+                                            <span class="text-muted d-block" style="font-size: 11px;">@report.DateSubmitted?.ToString("hh:mm tt")</span>
+                                        </td>
+                                        <td>
+                                            @if (report.Condition == "Minor Damage")
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2.5 py-1">🟡 Minor Damage</span>
+                                            }
+                                            else if (report.Condition == "Critical Damage")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1">🔴 Critical Damage</span>
+                                            }
+                                            else if (report.Condition == "For Repair")
+                                            {
+                                                <span class="badge bg-dark-subtle text-dark border border-dark-subtle px-2.5 py-1">🔧 For Repair</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1">🟢 Good</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (report.IsScheduled)
+                                            {
+                                                <span class="text-indigo-600 small"><i class="bi bi-calendar-check me-1"></i>Scheduled (#@report.ReportNumber)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-danger small"><i class="bi bi-lightning-fill me-1"></i>Incident</span>
+                                            }
+                                        </td>
+                                        <td class="px-4 py-3 text-end">
+                                            <a href="/ConditionMonitoring/Review/@report.ReportId" class="btn btn-sm btn-indigo"><i class="bi bi-pencil-square me-1"></i> Review Report</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="tab-pane fade" id="history" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                @if (Model == null || !Model.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-folder2-open fs-1 d-block mb-2 text-muted"></i>
+                        <h6 class="fw-bold mb-1">No reports logged</h6>
+                        <p class="small mb-0">No borrower condition reports have been submitted yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-0 px-4 py-3 text-muted small fw-bold">Tool ID & Name</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Borrower Details</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Date Submitted</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Condition</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Status</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Reviewed By</th>
+                                    <th class="border-0 px-4 py-3 text-muted small fw-bold text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var report in Model)
+                                {
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="d-block fw-bold text-dark">@report.Lending?.PropertyId</span>
+                                            <span class="text-muted small">@report.Lending?.Property?.Name</span>
+                                        </td>
+                                        <td>
+                                            <span class="d-block fw-semibold text-dark">@report.Lending?.BorrowerName</span>
+                                            <span class="text-muted small">Student ID: @report.Lending?.StudentId</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-dark small">@report.DateSubmitted?.ToString("MMMM dd, yyyy")</span>
+                                        </td>
+                                        <td>
+                                            @if (report.Condition == "Minor Damage")
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-0.5">🟡 Minor Damage</span>
+                                            }
+                                            else if (report.Condition == "Critical Damage")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5">🔴 Critical Damage</span>
+                                            }
+                                            else if (report.Condition == "For Repair")
+                                            {
+                                                <span class="badge bg-dark-subtle text-dark border border-dark-subtle px-2 py-0.5">🔧 For Repair</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5">🟢 Good</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (report.Status == "Pending")
+                                            {
+                                                <span class="badge bg-warning text-white rounded-pill px-2.5 py-0.5">Pending</span>
+                                            }
+                                            else if (report.Status == "Approved")
+                                            {
+                                                <span class="badge bg-success text-white rounded-pill px-2.5 py-0.5">Approved</span>
+                                            }
+                                            else if (report.Status == "ReturnRequested")
+                                            {
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-0.5">Return Requested</span>
+                                            }
+                                            else if (report.Status == "Resolved")
+                                            {
+                                                <span class="badge bg-secondary text-white rounded-pill px-2.5 py-0.5">Resolved</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="text-dark small">@(report.ReviewedBy ?? "—")</span>
+                                            @if (report.DateReviewed.HasValue)
+                                            {
+                                                <span class="text-muted d-block" style="font-size: 10px;">@report.DateReviewed?.ToString("MM/dd/yyyy")</span>
+                                            }
+                                        </td>
+                                        <td class="px-4 py-3 text-end">
+                                            <a href="/ConditionMonitoring/Review/@report.ReportId" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i> View</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-indigo-600 {
+        background-color: #4f46e5;
+    }
+    .text-indigo-100 {
+        color: #e0e7ff;
+    }
+    .text-indigo-200 {
+        color: #c7d2fe;
+    }
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: #fff;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: #fff;
+    }
+    .text-indigo-600 {
+        color: #4f46e5;
+    }
+</style>

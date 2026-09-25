@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Lending Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var records = ViewBag.Records as List<Assetra.Models.LendingRecord>;
+    var startDate = ViewBag.StartDate as DateTime?;
+    var endDate = ViewBag.EndDate as DateTime?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Lending Report</h4>
+    @if (startDate.HasValue || endDate.HasValue)
+    {
+        <span class="text-muted">
+            Filters: 
+            @(startDate.HasValue ? $"From {startDate.Value.ToString("MMM dd, yyyy")}" : "") 
+            @(endDate.HasValue ? $"To {endDate.Value.ToString("MMM dd, yyyy")}" : "")
+        </span>
+    }
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center p-3 border-0 shadow-sm">
+            <h6 class="text-muted">Total Borrowed</h6>
+            <h3 class="text-primary fw-bold">@ViewBag.TotalBorrowed</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3 border-0 shadow-sm">
+            <h6 class="text-muted">Returned</h6>
+            <h3 class="text-success fw-bold">@ViewBag.Returned</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3 border-0 shadow-sm">
+            <h6 class="text-muted">Overdue</h6>
+            <h3 class="text-danger fw-bold">@ViewBag.Overdue</h3>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0 bg-white">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Log ID</th>
+                        <th>Asset Name</th>
+                        <th>Borrower</th>
+                        <th>Date Borrowed</th>
+                        <th>Due Date</th>
+                        <th>Date Returned</th>
+                        <th class="pe-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (records == null || !records.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-file-earmark-bar-graph fs-1 d-block mb-2"></i>
+                                No logs matching the selected criteria.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in records)
+                        {
+                            bool isOverdue = item.Status == "Approved" && item.DueDate < DateTime.Today;
+                            <tr>
+                                <td class="ps-4 font-monospace fw-semibold">TX-@item.LendingId.ToString("D4")</td>
+                                <td>
+                                    <div class="fw-semibold text-dark">@item.Property?.Name</div>
+                                    <small class="text-muted font-monospace">@item.PropertyId</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">@item.BorrowerName</div>
+                                    @if (item.User != null)
+                                    {
+                                        <small class="badge bg-light text-secondary border">System User: @item.User.Username</small>
+                                    }
+                                </td>
+                                <td class="text-muted">@item.DateBorrowed.ToString("MMM dd, yyyy")</td>
+                                <td class="text-muted">@item.DueDate.ToString("MMM dd, yyyy")</td>
+                                <td class="text-muted">
+                                    @(item.DateReturned.HasValue ? item.DateReturned.Value.ToString("MMM dd, yyyy hh:mm tt") : "-")
+                                </td>
+                                <td class="pe-4">
+                                    @if (item.Status == "Pending")
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning border border-warning rounded-pill">Pending</span>
+                                    }
+                                    else if (item.Status == "Approved" && !isOverdue)
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success rounded-pill">On Loan</span>
+                                    }
+                                    else if (item.Status == "Approved" && isOverdue)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill">Overdue</span>
+                                    }
+                                    else if (item.Status == "Returned")
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary rounded-pill">Returned</span>
+                                    }
+                                    else if (item.Status == "Rejected")
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill">Rejected</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark border rounded-pill">@item.Status</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<a href="/Reports" class="btn btn-secondary shadow-sm"><i class="bi bi-arrow-left"></i> Back to Reports</a>

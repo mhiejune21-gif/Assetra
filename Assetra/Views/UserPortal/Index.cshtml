@@ -1,0 +1,340 @@
+@{
+    ViewData["Title"] = "Student Portal";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var categorizedItems = ViewBag.CategorizedItems as Dictionary<string, List<Assetra.Models.Property>> ?? new Dictionary<string, List<Assetra.Models.Property>>();
+    var pendingRequests = ViewBag.PendingRequests as List<Assetra.Models.LendingRecord> ?? new List<Assetra.Models.LendingRecord>();
+    var activeLoans = ViewBag.ActiveLoans as List<Assetra.Models.LendingRecord> ?? new List<Assetra.Models.LendingRecord>();
+    var returnedHistory = ViewBag.ReturnedHistory as List<Assetra.Models.LendingRecord> ?? new List<Assetra.Models.LendingRecord>();
+}
+
+<!-- Success/Error Notifications -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 text-success py-2 px-3 mb-4 rounded small shadow-sm" style="background-color: #f0fdf4;">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 text-danger py-2 px-3 mb-4 rounded small shadow-sm" style="background-color: #fef2f2;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+    </div>
+}
+
+@{
+    var allPortalReports = ViewBag.ConditionReports as List<Assetra.Models.ConditionReport> ?? new List<Assetra.Models.ConditionReport>();
+    int overdueCheckinCount = allPortalReports.Count(r => r.IsScheduled && r.DateSubmitted == null && r.ScheduledDate < DateTime.Today);
+}
+
+@if (overdueCheckinCount > 0)
+{
+    <div class="alert alert-danger border-0 text-danger py-3 px-3 mb-4 rounded shadow-sm d-flex align-items-center justify-content-between" style="background-color: #fef2f2;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-flag-fill text-danger fs-4 me-3"></i>
+            <div>
+                <strong class="d-block text-danger">⚠️ Account Flagged: Non-Compliance on Condition Reporting</strong>
+                <span class="small text-muted">You have <strong>@overdueCheckinCount</strong> overdue condition report check-in(s). Your profile is currently flagged on the custodian management board. Please submit your pending reports below to restore your standing.</span>
+            </div>
+        </div>
+        <span class="badge bg-danger rounded-pill px-3 py-2 fw-semibold ms-3 text-nowrap">Flagged (@overdueCheckinCount)</span>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Welcome back, @Context.Session.GetString("FullName")!</h4>
+        <p class="text-muted small mb-0">Student Asset & Equipment Borrowing Portal</p>
+    </div>
+    <!-- Scan QR Code Button for Student -->
+    <a href="/Lending/Scan" class="btn btn-indigo shadow-sm py-2 px-3 fw-bold">
+        <i class="bi bi-qr-code-scan me-2 text-warning"></i>Scan QR to Borrow
+    </a>
+</div>
+
+<div class="row">
+    <!-- Left Column: Browse Categorized Assets -->
+    <div class="col-lg-7 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="card-title fw-bold mb-0 text-indigo-900"><i class="bi bi-grid-3x3-gap text-indigo-600 me-2"></i>Available Tools & Equipment</h5>
+            </div>
+            <div class="card-body p-4">
+                @if (!categorizedItems.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
+                        No tools are currently available for borrowing.
+                    </div>
+                }
+                else
+                {
+                    foreach (var category in categorizedItems)
+                    {
+                        <div class="mb-5">
+                            <h6 class="text-uppercase fw-bold text-indigo-600 tracking-wide mb-3 border-bottom pb-2">@category.Key</h6>
+                            <div class="row row-cols-1 row-cols-md-2 g-3">
+                                @foreach (var item in category.Value)
+                                {
+                                    <div class="col">
+                                        <div class="card border h-100 shadow-sm transition-hover">
+                                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <h6 class="fw-bold mb-0 text-dark">@item.Name</h6>
+                                                        <span class="badge bg-indigo-50 text-indigo-600 font-monospace small">@item.PropertyId</span>
+                                                    </div>
+                                                    <p class="small text-muted mb-2">@item.Description</p>
+                                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                                        <span class="small text-muted"><i class="bi bi-geo-alt me-1"></i> @item.Location</span>
+                                                        <span class="badge bg-light text-dark border rounded-pill">Qty: @item.Quantity</span>
+                                                    </div>
+                                                    <span class="badge bg-success-subtle text-success border border-success rounded-pill mb-2">Condition: @item.ConditionStatus</span>
+                                                </div>
+                                                <a href="/Lending/Create?propertyId=@item.PropertyId" class="btn btn-sm btn-indigo w-100 mt-2 shadow-sm">
+                                                    <i class="bi bi-plus-circle me-1"></i> Request Loan
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: My Tracking (Pending, Active & Returned Loans) -->
+    <div class="col-lg-5 mb-4">
+        <div class="row g-4">
+            <!-- Active Loans (Processing Items) -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0 text-emerald-600"><i class="bi bi-arrow-left-right me-2"></i>My Active Loans</h5>
+                        <span class="badge bg-emerald-600 rounded-pill">@activeLoans.Count</span>
+                    </div>
+                    <div class="card-body p-3" style="max-height: 600px; overflow-y: auto;">
+                        @if (!activeLoans.Any())
+                        {
+                            <p class="text-center text-muted py-4 mb-0 small">No active loans found.</p>
+                        }
+                        else
+                        {
+                            var allReports = ViewBag.ConditionReports as List<Assetra.Models.ConditionReport> ?? new List<Assetra.Models.ConditionReport>();
+                            
+                            foreach (var loan in activeLoans)
+                            {
+                                 bool isOverdue = loan.DueDate < DateTime.Today;
+                                 var reports = allReports.Where(r => r.LendingId == loan.LendingId).ToList();
+                                 var nextReport = reports.Where(r => r.IsScheduled && r.DateSubmitted == null).OrderBy(r => r.ScheduledDate).FirstOrDefault();
+                                 
+                                 int incidentCount = reports.Count(r => !r.IsScheduled && r.DateSubmitted != null);
+                                 int borrowDays = (loan.DueDate.Date - loan.DateBorrowed.Date).Days;
+                                 if (borrowDays < 1) borrowDays = 1;
+                                 int maxIncidents = borrowDays <= 7 ? 2 : (borrowDays <= 14 ? 4 : (borrowDays <= 30 ? 6 : 10));
+                                 bool incidentLimitReached = incidentCount >= maxIncidents;
+                                
+                                <div class="p-3 border rounded mb-3 bg-light shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <span class="fw-bold text-dark text-truncate" style="max-width: 70%;">@loan.Property?.Name</span>
+                                        @if (isOverdue)
+                                        {
+                                            <span class="badge bg-rose-100 text-rose-800 border border-rose-200">Overdue</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-emerald-100 text-emerald-800 border border-emerald-200">Active</span>
+                                        }
+                                    </div>
+                                    <div class="small text-muted mb-2 font-monospace">@loan.PropertyId</div>
+                                    <div class="d-flex justify-content-between align-items-center small mt-2 pt-2 border-top">
+                                        <span>Borrowed: <strong>@loan.DateBorrowed.ToString("MMM dd")</strong></span>
+                                        <span class="@(isOverdue ? "text-danger fw-bold" : "text-muted")">Due: @loan.DueDate.ToString("MMM dd")</span>
+                                    </div>
+
+                                    <!-- Condition Reports Checklist -->
+                                    @if (reports.Any(r => r.IsScheduled))
+                                    {
+                                        <div class="mt-3 pt-2 border-top">
+                                            <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                <i class="bi bi-clipboard-check me-1"></i>Condition Reports Checklist
+                                            </label>
+                                            <div class="list-group list-group-flush" style="font-size: 11px;">
+                                                @foreach (var r in reports.Where(r => r.IsScheduled))
+                                                {
+                                                    bool isSubmitted = r.DateSubmitted.HasValue;
+                                                    bool isReportOverdue = !isSubmitted && r.ScheduledDate < DateTime.Today;
+                                                    int daysUntil = r.ScheduledDate.HasValue ? (r.ScheduledDate.Value.Date - DateTime.Today).Days : 0;
+                                                    
+                                                    <div class="list-group-item px-0 py-1 bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                        <span class="text-dark">
+                                                            @if (isSubmitted)
+                                                            {
+                                                                <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Report #@r.ReportNumber</span>
+                                                            }
+                                                            else if (isReportOverdue)
+                                                            {
+                                                                <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Report #@r.ReportNumber</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted"><i class="bi bi-circle me-1"></i>Report #@r.ReportNumber</span>
+                                                            }
+                                                        </span>
+                                                        <span class="font-monospace text-end">
+                                                            @if (isSubmitted)
+                                                            {
+                                                                <span class="text-success fw-bold">Submitted (@r.Condition)</span>
+                                                            }
+                                                            else if (isReportOverdue)
+                                                            {
+                                                                <span class="text-danger fw-bold">Overdue (@Math.Abs(daysUntil)d ago)</span>
+                                                            }
+                                                            else if (daysUntil == 0)
+                                                            {
+                                                                <span class="text-warning fw-bold">Due Today!</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">Due in @daysUntil days</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                     <!-- Action Buttons -->
+                                     <div class="d-flex gap-2 mt-3 pt-2 border-top justify-content-between align-items-center">
+                                         <span class="text-muted small" style="font-size: 10px;">
+                                             Incidents: <strong class="@(incidentLimitReached ? "text-danger" : "text-dark")">@incidentCount / @maxIncidents</strong>
+                                         </span>
+                                         <div class="d-flex gap-1.5">
+                                             <!-- Emergency Damage / Incident Report -->
+                                             @if (incidentLimitReached)
+                                             {
+                                                 <button class="btn btn-xs btn-outline-secondary px-2.5 py-1" style="font-size: 11px;" disabled title="Incident report quota reached for this borrowing period">
+                                                     <i class="bi bi-exclamation-octagon-fill me-1"></i>Report Incident
+                                                 </button>
+                                             }
+                                             else
+                                             {
+                                                 <a href="/ConditionMonitoring/SubmitReport?lendingId=@loan.LendingId" class="btn btn-xs btn-outline-danger px-2.5 py-1" style="font-size: 11px;">
+                                                     <i class="bi bi-exclamation-octagon-fill me-1"></i>Report Incident
+                                                 </a>
+                                             }
+
+                                             <!-- Scheduled Check-in Report -->
+                                             @if (nextReport != null)
+                                             {
+                                                 <a href="/ConditionMonitoring/SubmitReport?lendingId=@loan.LendingId&reportId=@nextReport.ReportId" class="btn btn-xs btn-indigo px-3 py-1" style="font-size: 11px;">
+                                                     <i class="bi bi-check2-square me-1"></i>Report Condition
+                                                 </a>
+                                             }
+                                         </div>
+                                     </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Requests -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0 text-warning"><i class="bi bi-clock me-2"></i>Pending Approvals</h5>
+                        <span class="badge bg-warning text-dark rounded-pill">@pendingRequests.Count</span>
+                    </div>
+                    <div class="card-body p-3" style="max-height: 280px; overflow-y: auto;">
+                        @if (!pendingRequests.Any())
+                        {
+                            <p class="text-center text-muted py-4 mb-0 small">No pending requests.</p>
+                        }
+                        else
+                        {
+                            foreach (var req in pendingRequests)
+                            {
+                                <div class="p-3 border rounded mb-2 bg-light shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <span class="fw-bold text-dark text-truncate" style="max-width: 80%;">@req.Property?.Name</span>
+                                    </div>
+                                    <div class="small text-muted font-monospace mb-2">@req.PropertyId</div>
+                                    <div class="d-flex justify-content-between align-items-center small mt-2 pt-2 border-top">
+                                        <span>Requested: <strong>@req.DateBorrowed.ToString("MMM dd")</strong></span>
+                                        <span class="badge bg-warning-subtle text-warning border border-warning rounded-pill">Pending Teacher</span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Borrowing History (Returned Items) -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0 text-secondary"><i class="bi bi-journal-text me-2"></i>My Borrowing History</h5>
+                        <span class="badge bg-secondary rounded-pill">@returnedHistory.Count</span>
+                    </div>
+                    <div class="card-body p-3" style="max-height: 280px; overflow-y: auto;">
+                        @if (!returnedHistory.Any())
+                        {
+                            <p class="text-center text-muted py-4 mb-0 small">No returned items found.</p>
+                        }
+                        else
+                        {
+                            foreach (var hist in returnedHistory)
+                            {
+                                <div class="p-3 border rounded mb-2 bg-light shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <span class="fw-bold text-dark text-truncate" style="max-width: 80%;">@hist.Property?.Name</span>
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary">Returned</span>
+                                    </div>
+                                    <div class="small text-muted font-monospace mb-1">@hist.PropertyId</div>
+                                    <div class="d-flex justify-content-between align-items-center small mt-2 pt-2 border-top">
+                                        <span>Returned: <strong>@hist.DateReturned?.ToString("MMM dd, yyyy")</strong></span>
+                                        <span>In: <strong>@hist.ReturnedCondition</strong></span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+    .bg-indigo-50 {
+        background-color: #e0e7ff;
+    }
+    .text-indigo-600 {
+        color: #4f46e5;
+    }
+    .transition-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .transition-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+    .tracking-wide {
+        letter-spacing: 0.8px;
+        font-size: 11px;
+    }
+</style>

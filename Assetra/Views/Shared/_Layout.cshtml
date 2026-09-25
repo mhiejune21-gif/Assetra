@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assetra - @ViewData["Title"]</title>
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Assetra" />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png" />
+    <!-- Local Offline CSS Assets (Works with zero internet) -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    
+    <!-- Google Fonts (with local system fallback when offline) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --slate-primary: #0f172a;
+            --slate-secondary: #1e293b;
+            --body-bg: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            background-color: var(--body-bg);
+            color: #334155;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', 'Segoe UI', sans-serif;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--slate-primary);
+            position: fixed;
+            top: 0; 
+            left: 0;
+            padding: 24px 16px;
+            overflow-y: auto;
+            z-index: 1040;
+            transition: transform 0.3s ease-in-out;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            margin-bottom: 24px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .sidebar-brand i {
+            font-size: 24px;
+            color: #818cf8;
+            margin-right: 10px;
+        }
+
+        .sidebar-brand h5 {
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: 1px;
+            font-size: 20px;
+        }
+
+        /* User Profile in Sidebar */
+        .sidebar-profile {
+            background-color: var(--slate-secondary);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-profile .role-badge {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            background-color: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 2px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 4px;
+            font-weight: 700;
+        }
+
+        /* Nav links */
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-nav .nav-heading {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            padding: 10px 14px 4px 14px;
+            font-weight: 700;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            color: #94a3b8;
+            padding: 12px 16px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-nav a:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        .sidebar-nav a.active {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .sidebar-nav a i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 32px;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding: 12px 24px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .toggle-sidebar-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--slate-primary);
+            cursor: pointer;
+        }
+
+        /* Responsive Breakpoints */
+        @@media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show-sidebar {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .top-bar {
+                margin-bottom: 20px;
+            }
+
+            .toggle-sidebar-btn {
+                display: block;
+            }
+        }
+        
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.4);
+            z-index: 1030;
+        }
+
+        .sidebar-overlay.show-overlay {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="sidebar" id="sidebar">
+        <!-- Logo Brand -->
+        <a href="/" class="sidebar-brand">
+            <i class="bi bi-qr-code-scan"></i>
+            <h5>ASSETRA</h5>
+        </a>
+
+        <!-- Profile details -->
+        <div class="sidebar-profile">
+            <div class="d-flex align-items-center">
+                <div class="avatar bg-indigo text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 42px; height: 42px; font-weight: 700; background-color: #4f46e5;">
+                    @Context.Session.GetString("FullName")?.Substring(0, 1).ToUpper()
+                </div>
+                <div>
+                    <div class="text-white fw-bold small text-truncate" style="max-width: 130px;">@Context.Session.GetString("FullName")</div>
+                    <span class="role-badge">@Context.Session.GetString("Role")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-nav">
+            <span class="nav-heading">Main Menu</span>
+            
+            @if (Context.Session.GetString("Role") == "Admin")
+            {
+                <a href="/Dashboard" class="nav-link-item"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                <a href="/Inventory" class="nav-link-item"><i class="bi bi-box-seam"></i> Tool Inventory</a>
+                <a href="/Lending/Scan" class="nav-link-item"><i class="bi bi-camera"></i> Scan QR Code</a>
+                <a href="/Lending/Create" class="nav-link-item"><i class="bi bi-box-arrow-up"></i> Borrow Tool</a>
+                <a href="/Lending" class="nav-link-item"><i class="bi bi-arrow-left-right"></i> Lending History</a>
+                <a href="/Approval" class="nav-link-item"><i class="bi bi-check-circle"></i> Approvals</a>
+                <a href="/ConditionMonitoring" class="nav-link-item"><i class="bi bi-shield-check"></i> Condition Reports</a>
+                <a href="/Maintenance" class="nav-link-item"><i class="bi bi-wrench"></i> Maintenance</a>
+                <a href="/Reports" class="nav-link-item"><i class="bi bi-file-earmark-bar-graph"></i> Reports</a>
+                <a href="/Users" class="nav-link-item"><i class="bi bi-people"></i> Manage Users</a>
+            }
+            else
+            {
+                <a href="/UserPortal" class="nav-link-item"><i class="bi bi-house"></i> Home Portal</a>
+                <a href="/Lending/Scan" class="nav-link-item"><i class="bi bi-qr-code-scan"></i> Scan QR to Borrow</a>
+                <a href="/Lending" class="nav-link-item"><i class="bi bi-clock-history"></i> My History</a>
+            }
+            
+            <span class="nav-heading">Settings</span>
+            <a href="/Account/Logout" class="text-danger"><i class="bi bi-box-arrow-right text-danger"></i> Logout</a>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Top bar with mobile hamburger and profile -->
+        <div class="top-bar">
+            <button class="toggle-sidebar-btn" id="toggleSidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="badge bg-light text-dark py-2 px-3 border"><i class="bi bi-person-circle me-1"></i> @Context.Session.GetString("FullName") (@Context.Session.GetString("Role"))</span>
+            </div>
+        </div>
+
+        @RenderBody()
+    </div>
+
+    <!-- Local Offline JS Assets (Works with zero internet) -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toggleBtn = document.getElementById("toggleSidebar");
+            const sidebar = document.getElementById("sidebar");
+            const overlay = document.getElementById("sidebarOverlay");
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener("click", function () {
+                    sidebar.classList.toggle("show-sidebar");
+                    overlay.classList.toggle("show-overlay");
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener("click", function () {
+                    sidebar.classList.remove("show-sidebar");
+                    overlay.classList.remove("show-overlay");
+                });
+            }
+
+            // Set active class on navigation links
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll(".nav-link-item");
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute("href");
+                // Check if paths match or link starts with path
+                if (currentPath === href || (href !== "/" && currentPath.startsWith(href))) {
+                    link.classList.add("active");
+                }
+            });
+        });
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

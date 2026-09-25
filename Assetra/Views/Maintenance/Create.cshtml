@@ -1,0 +1,51 @@
+@{
+    ViewData["Title"] = "Schedule Maintenance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold text-dark">Schedule Tool Maintenance</h4>
+        <p class="text-muted small mb-0">Book a tool for repair or routine servicing.</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="max-width: 600px;">
+    <div class="card-body p-4">
+        <form method="post" action="/Maintenance/Create">
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-dark">Equipment / Tool</label>
+                <select name="PropertyId" class="form-select" required>
+                    <option value="">-- Select Tool to Service --</option>
+                    @foreach (var p in ViewBag.Properties as List<Assetra.Models.Property>)
+                    {
+                        <option value="@p.PropertyId">@p.PropertyId - @p.Name (@p.Status)</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-dark">Scheduled Date</label>
+                <input type="date" name="ScheduledDate" class="form-control" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-dark">Maintenance Description</label>
+                <textarea name="Description" class="form-control" rows="3" placeholder="Describe the service or issues (e.g. clean lens, replace battery, broken screen)..." required></textarea>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <a href="/Maintenance" class="btn btn-light border px-4">Cancel</a>
+                <button type="submit" class="btn btn-indigo px-4 shadow-sm">Schedule Maintenance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-indigo {
+        background-color: #4f46e5;
+        color: white;
+    }
+    .btn-indigo:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+</style>
