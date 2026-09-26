@@ -16,8 +16,9 @@ namespace Assetra.Services
         private readonly IConfiguration _config;
         private readonly ILogger<FirestoreService> _logger;
         private FirestoreDb? _db;
+        private bool _dbInitAttempted;
 
-        // In-memory fallback stores when Firestore credentials/Project ID are not yet configured
+        // In-memory fallback stores
         private static readonly ConcurrentDictionary<int, User> _users = new();
         private static readonly ConcurrentDictionary<string, Property> _properties = new();
         private static readonly ConcurrentDictionary<int, LendingRecord> _lendings = new();
@@ -26,7 +27,7 @@ namespace Assetra.Services
         private static readonly ConcurrentDictionary<int, MaintenanceRecord> _maintenanceRecords = new();
         private static bool _seeded = false;
 
-        private const string EmbeddedBase64Creds = "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiYXNzZXRyYS1lZjE2NSIsCiAgInByaXZhdGVfa2V5X2lkIjogIjhlYzhkMWZiNzI3ZmM0ZWRiN2RhYjQ3MWM5MWY3NTQ3YWYwZDJkYzIiLAogICJwcml2YXRlX2tleSI6ICItLS0tLUJFR0lOIFBSSVZBVEUgS0VZLS0tLS1cbk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRQzVDRC9wbkVobmFSaCtcbkUybG1OVWViajA5YlcvNU1rSkVqcnBya0xmMnp0MWlOdGEzWVU4b1pvR2FOR1RwVzhJMC90M1ZxMkZURFZJTTFcbmtvanFnMmxxenFVc3RwL0FkZU5mcDJyQ21lMU9URU8yQURlU3VocnpHNXVLOHpxaVl5WSsxaElDVEt6b1E4ZkpcblB0OU9tNDhDaFhjamVnMFhwSGcxMnRudHZ5WTRpRDVyOHNDTjh1a2J3c21LdHpDWUQ1Rld2UXlmcmR3R283dmhcblFwNFhZdnNCQThIa1pWY2pBeHFqdU1TdUVIcmQwSzdzS0pvQVphb1pUdURKa0lwK2Qvck50Y3ZjaVNHb054VXRcbkU1Y1NMblV3MThHNnNqb2FYa3dsRmUvbjNnN1hMNlNLeWdJS0JaVWJRbExFL1VMNmhKY2xBdVdsRG9wa3kwSVJcbkdCWmFaUXJQQWdNQkFBRUNnZ0VBS0taMVZCOXZrTGg0Rndxd3R6R3hYNjJtWTQzY1dublFTU1NOQnVCTHduWGZcblVKSy9kSzFEMDBsMy9qdXlvM01KdFJ2YkFmUXcreERRR3E3c3dZakpXaHU0RWhDMUhCVktOTE9WTXRlYVdQOU1cblNPblhTN2J6UU1HcDlHYm5WTkd2ajFKOGRtRGVBOUVRVFZnd3V4WlYzdG52aUszQnZwWDFpdTlmdldtblBmZmdcbmtLV1ZrWnRjZ1FxOGsyRDFERWpnNlR2S3ZhQlNEeXpjTnozbWRaZ0c1d2h4NXdROExTSFNBNm9BQW1UYzhNVHVcbjBpeGQrcHZuc01IMWZaV3RjakdvbG1uVFdwTk9RdXRPbmlOQUo5ZFppb2kzOWxEODd3WDBMRk5udWFwTDZ5UlJcbm56aUI4aE5aSU9DeHBObjRVRzhJWWlOTGNycmlVdE9PeFlUVGVucnF3UUtCZ1FEd3dqekxJUUpHMjlMTGZ6QU9cbndzUHdCeWVheU5MNnVnM1ZLemdqRGdrZ29McnBZMjJWbGxJU201aWdpRkExQ2VQdWNTZFBKbFZ6TDVuUWlBZlNcbmxES1RWb3I1MjJySVpWR0lPaGZ1eWhRc1FMOUVhTk53MkNpVWxrTVVHK2NGNFg2aUFXRm9CUTVKWmk0U1pNcTZcblMxSE5mbzJPRVlXdHJUV1ZNUnA4WC8va3NRS0JnUURFdnViMURIdStsWlNrN2FwVVY3SnpKcjl4TElsenZ3bldcbjJXdnI4emxGVXI5alJUbEYySXJJa0wrcjMvZEMyT2ZROWZ6WU9SVkNQclArQllYUjEwdzN4eEI1WVdlV29uMnZcbnhkTFVKTlhncEJrb0J2K2ZNTHZka1MyYnFZR29Qc09ZTHZuWWRBaXk3M2o4TGNlTUYwdXFYeXBSR3Baa1dabXpcblppSEl5YjNIZndLQmdGMThqdTZ4V3BqNU10a2lBaDg1TWF3Nm12NVhqTlVlK2RBVWdDL2NlMTdZQ3J3bGg1L1dcblJ2aEN3dmxTOVJJalRRYUJtYW42VUtQeGorQ1JjYmdySTVoaXVvUmExeFFKZzZkS0o1RHBsdnU0Q0kwZnh6ckNcbk5NLzl1VDVOdDE5cE9DcmdMbHFkMi9aVVh2OTFjK0x5N0VqSEkyQlBIWUZiQ0x0dDNjTDk0L2VCQW9HQUtDOTlcbjZRdDFzd1hHYUxHS210T1d4V0ppcy9FTzJpOXBDUk03c2VQcURMak1FckN1OUE4NHVhS25JNm9KVFFRVXhWK1pcbkYya0JhSmg2RnlaMW9OakMzcG13U2JxVmQvVVVpdlJ6RFpYQWdiUEMxNlFtVGhPY0s3TmRoMi9sNWNGOEhmZHFcblhNWEdpUlhVdGwxN1pxZlRjcWNoYzVOa3FIYU1xRkh5RUpyMFFtMENnWUVBcjcrM1pCZ2NyVGxZd2Z3VkhNT2Vcbi9NYVNDbzhuL1JrNVJPb2JubU5FbUN6SXdnTjBmQ0FOa25wdWFob041T1RiU0ZXbW5BWFI4MVBxdjJybG9xTTJcbndWTVJpekI4aHNaL055UGU2WWordUl6SlpvdXpqckdEdTdLd1o4ek5rR0g0YXVJdjkyT1R6eEtmaENmOFFNUGRcbjkyUHIyaHJidUxmSmJGbWRvZkljR21ZPVxuLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLVxuIiwKICAiY2xpZW50X2VtYWlsIjogImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJjbGllbnRfaWQiOiAiMTEwNzMxOTY1NTI0MjY0MTg2NzM2IiwKICAiYXV0aF91cmkiOiAiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tL28vb2F1dGgyL2F1dGgiLAogICJ0b2tlbl91cmkiOiAiaHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4iLAogICJhdXRoX3Byb3ZpZGVyX3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vb2F1dGgyL3YxL2NlcnRzIiwKICAiY2xpZW50X3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vcm9ib3QvdjEvbWV0YWRhdGEveDUwOS9maXJlYmFzZS1hZG1pbnNkay1mYnN2YyU0MGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBpcy5jb20iCn0K";
+        private const string EmbeddedBase64Creds = "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiYXNzZXRyYS1lZjE2NSIsCiAgInByaXZhdGVfa2V5X2lkIjogIjhlYzhkMWZiNzI3ZmM0ZWRiN2RhYjQ3MWM5MWY3NTQ3YWYwZDJkYzIiLAogICJwcml2YXRlX2tleSI6ICItLS0tLUJFR0lOIFBSSVZBVEUgS0VZLS0tLS1cbk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRQzVDRC9wbkVobmFSaCtcbkUybG1OVWViajA5YlcvNU1rSkVqcnBya0xmMnp0MWlOdGEzWVU4b1pvR2FOR1RwVzhJMC90M1ZxMkZURFZJTTFcbmtvanFnMmxxenFVc3RwL0FkZU5mcDJyQ21lMU9URU8yQURlU3VocnpHNXVLOHpxaVl5WSsxaElDVEt6b1E0ZkpcblB0OU9tNDhDaFhjamVnMFhwSGcxMnRudHZ5WTRpRDVyOHNDTjh1a2J3c21LdHpDWUQ1Rld2UXlmcmR3R283dmhcblFwNFhZdnNCQThIa1pWY2pBeHFqdU1TdUVIcmQwSzdzS0pvQVphb1pUdURKa0lwK2Qvck50Y3ZjaVNHb054VXRcbkU1Y1NMblV3MThHNnNqb2FYa3dsRmUvbjNnN1hMNlNLeWdJS0JaVWJRbExFL1VMNmhKY2xBdVdsRG9wa3kwSVJcbkdCWmFaUXJQQWdNQkFBRUNnZ0VBS0taMVZCOXZrTGg0Rndxd3R6R3hYNjJtWTQzY1dublFTU1NOQnVCTHduWGZcblVKSy9kSzFEMDBsMy9qdXlvM01KdFJ2YkFmUXcreERRR3E3c3dZakpXaHU0RWhDMUhCVktOTE9WTXRlYVdQOU1cblNPblhTN2J6UU1HcDlHYm5WTkd2ajFKOGRtRGVBOUVRVFZnd3V4WlYzdG52aUszQnZwWDFpdTlmdldtblBmZmdcbmtLV1ZrWnRjZ1FxOGsyRDFERWpnNlR2S3ZhQlNEeXpjTnozbWRaZ0c1d2h4NXdROExTSFNBNm9BQW1UYzhNVHVcbjBpeGQrcHZuc01IMWZaV3RjakdvbG1uVFdwTk9RdXRPbmlOQUo5ZFppb2kzOWxEODd3WDBMRk5udWFwTDZ5UlJcbm56aUI4aE5aSU9DeHBObjRVRzhJWWlOTGNycmlVdE9PeFlUVGVucnF3UUtCZ1FEd3dqekxJUUpHMjlMTGZ6QU9cbndzUHdCeWVheU5MNnVnM1ZLemdqRGdrZ29McnBZMjJWbGxJU201aWdpRkExQ2VQdWNTZFBKbFZ6TDVuUWlBZlNcbmxFS1RWb3I1MjJySVpWR0lPaGZ1eWhRc1FMOUVhTk53MkNpVWxrTVVHK2NGNFg2aUFXRm9CUTVKWmk0U1pNcTZcblMxSE5mbzJPRVlXdHJUV1ZNUnA4WC8va3NRS0JnUURFdnViMURIdStsWlNrN2FwVVY3SnpKcjl4TElsenZ3bldcbjJXdnI4emxGVXI5alJUbEYySXJJa0wrcjMvZEMyT2ZROWZ6WU9SVkNQclArQllYUjEwdzN4eEI1WVdlV29uMnZcbnhkTFVKTlhncEJrb0J2K2ZNTHZka1MyYnFZR29Qc09ZTHZuWWRBaXk3M2o4TGNlTUYwdXFYeXBSR3Baa1dabXpcblppSEl5YjNIZndLQmdGMThqdTZ4V3BqNU10a2lBaDg1TWF3Nm12NVhqTlVlK2RBVWdDL2NlMTdZQ3J3bGg1L1dcblJ2aEN3dmxTOVJJalRRYUJtYW42VUtQeGorQ1JjYmdySTVoaXVvUmExeFFKZzZkS0o1RHBsdnU0Q0kwZnh6ckNcbk5NLzl1VDVOdDE5cE9DcmdMbHFkMi9aVVh2OTFjK0x5N0VqSEkyQlBIWUZiQ0x0dDNjTDk0L2VCQW9HQUtDOTlcbjZRdDFzd1hHYUxHS210T1d4V0ppcy9FTzJpOXBDUk03c2VQcURMak1FckN1OUE4NHVhS25JNm9KVFFRVXhWK1pcbkYya0JhSmg2RnlaMW9OakMzcG13U2JxVmQvVVVpdlJ6RFpYQWdiUEMxNlFtVGhPY0s3TmRoMi9sNWNGOEhmZHFcblhNWEdpUlhVdGwxN1pxZlRjcWNoYzVOa3FIYU1xRkh5RUpyMFFtMENnWUVBcjcrM1pCZ2NyVGxZd2Z3VkhNT2Vcbi9NYVNDbzhuL1JrNVJPb2JubU5FbUN6SXdnTjBmQ0FOa25wdWFob041T1RiU0ZXbW5BWFI4MVBxdjJybG9xTTJcbndWTVJpekI4aHNaL055UGU2WWordUl6SlpvdXpqckdEdTdLd1o0ek5rR0g0YXVJdjkyT1R6eEtmaENmOFFNUGRcbjkyUHIyaHJidUxmSmJGbWRvZkljR21ZPVxuLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLVxuIiwKICAiY2xpZW50X2VtYWlsIjogImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJjbGllbnRfaWQiOiAiMTEwNzMxOTY1NTI0MjY0MTg2NzM2IiwKICAiYXV0aF91cmkiOiAiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tL28vb2F1dGgyL2F1dGgiLAogICJ0b2tlbl91cmkiOiAiaHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4iLAogICJhdXRoX3Byb3ZpZGVyX3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vb2F1dGgyL3YxL2NlcnRzIiwKICAiY2xpZW50X3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vcm9ib3QvdjEvbWV0YWRhdGEveDUwOS9maXJlYmFzZS1hZG1pbnNkay1mYnN2YyU0MGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBpcy5jb20iCn0K";
 
         public FirestoreService(IConfiguration config, ILogger<FirestoreService> logger)
         {
@@ -34,11 +35,16 @@ namespace Assetra.Services
             _logger = logger;
         }
 
-        // Returns a live FirestoreDb, building it on first call.
-        // Never permanently caches a failure — if it fails once, it will retry next time.
+        /// <summary>
+        /// Lazily builds and caches the FirestoreDb. If building fails, returns null
+        /// but does NOT permanently lock into fallback — retries on the next call.
+        /// </summary>
         private FirestoreDb? GetDb()
         {
             if (_db != null) return _db;
+            if (_dbInitAttempted) return null; // Avoid repeated failures within the same request cycle
+
+            _dbInitAttempted = true;
 
             string projectId = _config["Firestore:ProjectId"] ?? "assetra-ef165";
             string credPath = _config["Firestore:CredentialsPath"] ?? "firebase_key.json";
@@ -47,12 +53,13 @@ namespace Assetra.Services
             {
                 if (File.Exists(credPath))
                 {
+                    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credPath);
                     _db = FirestoreDb.Create(projectId);
                 }
                 else
                 {
                     byte[] bytes = Convert.FromBase64String(EmbeddedBase64Creds);
-                    using var stream = new System.IO.MemoryStream(bytes);
+                    using var stream = new MemoryStream(bytes);
                     var builder = new FirestoreDbBuilder
                     {
                         ProjectId = projectId,
@@ -60,11 +67,11 @@ namespace Assetra.Services
                     };
                     _db = builder.Build();
                 }
-                _logger.LogInformation("Successfully connected to Google Cloud Firestore for Project ID: {ProjectId}", projectId);
+                _logger.LogInformation("[FIRESTORE] Connected successfully to project: {ProjectId}", projectId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "FIRESTORE CONNECTION FAILED for Project ID '{ProjectId}'. Falling back to in-memory for this request.", projectId);
+                _logger.LogError(ex, "[FIRESTORE] FAILED to build FirestoreDb for project '{ProjectId}'", projectId);
                 _db = null;
             }
 
@@ -78,6 +85,7 @@ namespace Assetra.Services
             var db = GetDb();
             if (db == null)
             {
+                _logger.LogWarning("[FIRESTORE] No database connection. Seeding defaults in-memory.");
                 SeedDefaultsInMemory();
                 _seeded = true;
                 return;
@@ -85,17 +93,21 @@ namespace Assetra.Services
 
             try
             {
-                // Check if Users collection has any documents
                 var snapshot = await db.Collection("users").Limit(1).GetSnapshotAsync();
                 if (snapshot.Count == 0)
                 {
-                    await SeedDefaultsFirestoreAsync();
+                    _logger.LogInformation("[FIRESTORE] Empty database detected. Seeding defaults to Firestore.");
+                    await SeedDefaultsFirestoreAsync(db);
+                }
+                else
+                {
+                    _logger.LogInformation("[FIRESTORE] Existing data found ({Count} user(s)). Skipping seed.", snapshot.Count);
                 }
                 _seeded = true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initializing Firestore seeding. Falling back to memory provider.");
+                _logger.LogError(ex, "[FIRESTORE] InitializeAsync query failed. Seeding in-memory fallback.");
                 SeedDefaultsInMemory();
                 _seeded = true;
             }
@@ -151,11 +163,8 @@ namespace Assetra.Services
             }
         }
 
-        private async Task SeedDefaultsFirestoreAsync()
+        private async Task SeedDefaultsFirestoreAsync(FirestoreDb db)
         {
-            var db = GetDb();
-            if (db == null) return;
-
             var adminUser = new User
             {
                 UserId = 1,
@@ -198,36 +207,57 @@ namespace Assetra.Services
         #region Users
         public async Task<List<User>> GetUsersAsync()
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                return _users.Values.OrderBy(u => u.UserId).ToList();
+                try
+                {
+                    var snap = await db.Collection("users").GetSnapshotAsync();
+                    return snap.Documents.Select(d => d.ConvertTo<User>()).OrderBy(u => u.UserId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetUsersAsync failed. Falling back to in-memory.");
+                }
             }
-
-            var snap = await _fireDb.Collection("users").GetSnapshotAsync();
-            return snap.Documents.Select(d => d.ConvertTo<User>()).OrderBy(u => u.UserId).ToList();
+            return _users.Values.OrderBy(u => u.UserId).ToList();
         }
 
         public async Task<User?> GetUserByIdAsync(int id)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                return _users.TryGetValue(id, out var u) ? u : null;
+                try
+                {
+                    var doc = await db.Collection("users").Document(id.ToString()).GetSnapshotAsync();
+                    return doc.Exists ? doc.ConvertTo<User>() : null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetUserByIdAsync({Id}) failed.", id);
+                }
             }
-
-            var doc = await _fireDb.Collection("users").Document(id.ToString()).GetSnapshotAsync();
-            return doc.Exists ? doc.ConvertTo<User>() : null;
+            return _users.TryGetValue(id, out var u) ? u : null;
         }
 
         public async Task<User?> GetUserByUsernameAsync(string username)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                return _users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+                try
+                {
+                    var query = await db.Collection("users").WhereEqualTo("Username", username).GetSnapshotAsync();
+                    var doc = query.Documents.FirstOrDefault();
+                    return doc != null ? doc.ConvertTo<User>() : null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetUserByUsernameAsync('{Username}') failed.", username);
+                }
             }
-
-            var query = await _fireDb.Collection("users").WhereEqualTo("Username", username).GetSnapshotAsync();
-            var doc = query.Documents.FirstOrDefault();
-            return doc != null ? doc.ConvertTo<User>() : null;
+            return _users.Values.FirstOrDefault(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task AddUserAsync(User user)
@@ -238,92 +268,148 @@ namespace Assetra.Services
                 user.UserId = users.Count > 0 ? users.Max(u => u.UserId) + 1 : 1;
             }
 
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _users[user.UserId] = user;
-                return;
+                try
+                {
+                    await db.Collection("users").Document(user.UserId.ToString()).SetAsync(user);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddUserAsync failed for user {UserId}.", user.UserId);
+                }
             }
-
-            await _fireDb.Collection("users").Document(user.UserId.ToString()).SetAsync(user);
+            _users[user.UserId] = user;
         }
 
         public async Task UpdateUserAsync(User user)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _users[user.UserId] = user;
-                return;
+                try
+                {
+                    await db.Collection("users").Document(user.UserId.ToString()).SetAsync(user, SetOptions.Overwrite);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] UpdateUserAsync failed for user {UserId}.", user.UserId);
+                }
             }
-
-            await _fireDb.Collection("users").Document(user.UserId.ToString()).SetAsync(user, SetOptions.Overwrite);
+            _users[user.UserId] = user;
         }
 
         public async Task DeleteUserAsync(int id)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _users.TryRemove(id, out _);
-                return;
+                try
+                {
+                    await db.Collection("users").Document(id.ToString()).DeleteAsync();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] DeleteUserAsync failed for user {Id}.", id);
+                }
             }
-
-            await _fireDb.Collection("users").Document(id.ToString()).DeleteAsync();
+            _users.TryRemove(id, out _);
         }
         #endregion
 
         #region Properties
         public async Task<List<Property>> GetPropertiesAsync()
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                return _properties.Values.OrderBy(p => p.PropertyId).ToList();
+                try
+                {
+                    var snap = await db.Collection("properties").GetSnapshotAsync();
+                    return snap.Documents.Select(d => d.ConvertTo<Property>()).OrderBy(p => p.PropertyId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetPropertiesAsync failed.");
+                }
             }
-
-            var snap = await _fireDb.Collection("properties").GetSnapshotAsync();
-            return snap.Documents.Select(d => d.ConvertTo<Property>()).OrderBy(p => p.PropertyId).ToList();
+            return _properties.Values.OrderBy(p => p.PropertyId).ToList();
         }
 
         public async Task<Property?> GetPropertyByIdAsync(string propertyId)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                return _properties.TryGetValue(propertyId, out var p) ? p : null;
+                try
+                {
+                    var doc = await db.Collection("properties").Document(propertyId).GetSnapshotAsync();
+                    return doc.Exists ? doc.ConvertTo<Property>() : null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetPropertyByIdAsync('{PropertyId}') failed.", propertyId);
+                }
             }
-
-            var doc = await _fireDb.Collection("properties").Document(propertyId).GetSnapshotAsync();
-            return doc.Exists ? doc.ConvertTo<Property>() : null;
+            return _properties.TryGetValue(propertyId, out var p) ? p : null;
         }
 
         public async Task AddPropertyAsync(Property property)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _properties[property.PropertyId] = property;
-                return;
+                try
+                {
+                    await db.Collection("properties").Document(property.PropertyId).SetAsync(property);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddPropertyAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("properties").Document(property.PropertyId).SetAsync(property);
+            _properties[property.PropertyId] = property;
         }
 
         public async Task UpdatePropertyAsync(Property property)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _properties[property.PropertyId] = property;
-                return;
+                try
+                {
+                    await db.Collection("properties").Document(property.PropertyId).SetAsync(property, SetOptions.Overwrite);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] UpdatePropertyAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("properties").Document(property.PropertyId).SetAsync(property, SetOptions.Overwrite);
+            _properties[property.PropertyId] = property;
         }
 
         public async Task DeletePropertyAsync(string propertyId)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _properties.TryRemove(propertyId, out _);
-                return;
+                try
+                {
+                    await db.Collection("properties").Document(propertyId).DeleteAsync();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] DeletePropertyAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("properties").Document(propertyId).DeleteAsync();
+            _properties.TryRemove(propertyId, out _);
         }
         #endregion
 
@@ -331,14 +417,23 @@ namespace Assetra.Services
         public async Task<List<LendingRecord>> GetLendingRecordsAsync()
         {
             List<LendingRecord> records;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                records = _lendings.Values.OrderByDescending(l => l.LendingId).ToList();
+                try
+                {
+                    var snap = await db.Collection("lendings").GetSnapshotAsync();
+                    records = snap.Documents.Select(d => d.ConvertTo<LendingRecord>()).OrderByDescending(l => l.LendingId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetLendingRecordsAsync failed.");
+                    records = _lendings.Values.OrderByDescending(l => l.LendingId).ToList();
+                }
             }
             else
             {
-                var snap = await _fireDb.Collection("lendings").GetSnapshotAsync();
-                records = snap.Documents.Select(d => d.ConvertTo<LendingRecord>()).OrderByDescending(l => l.LendingId).ToList();
+                records = _lendings.Values.OrderByDescending(l => l.LendingId).ToList();
             }
 
             // Populate relational navigation properties
@@ -360,14 +455,23 @@ namespace Assetra.Services
         public async Task<LendingRecord?> GetLendingRecordByIdAsync(int lendingId)
         {
             LendingRecord? record = null;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                if (_lendings.TryGetValue(lendingId, out var r)) record = r;
+                try
+                {
+                    var doc = await db.Collection("lendings").Document(lendingId.ToString()).GetSnapshotAsync();
+                    if (doc.Exists) record = doc.ConvertTo<LendingRecord>();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetLendingRecordByIdAsync({Id}) failed.", lendingId);
+                    if (_lendings.TryGetValue(lendingId, out var r)) record = r;
+                }
             }
             else
             {
-                var doc = await _fireDb.Collection("lendings").Document(lendingId.ToString()).GetSnapshotAsync();
-                if (doc.Exists) record = doc.ConvertTo<LendingRecord>();
+                if (_lendings.TryGetValue(lendingId, out var r)) record = r;
             }
 
             if (record != null)
@@ -393,24 +497,38 @@ namespace Assetra.Services
                 record.LendingId = list.Count > 0 ? list.Max(l => l.LendingId) + 1 : 1;
             }
 
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _lendings[record.LendingId] = record;
-                return;
+                try
+                {
+                    await db.Collection("lendings").Document(record.LendingId.ToString()).SetAsync(record);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddLendingRecordAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("lendings").Document(record.LendingId.ToString()).SetAsync(record);
+            _lendings[record.LendingId] = record;
         }
 
         public async Task UpdateLendingRecordAsync(LendingRecord record)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _lendings[record.LendingId] = record;
-                return;
+                try
+                {
+                    await db.Collection("lendings").Document(record.LendingId.ToString()).SetAsync(record, SetOptions.Overwrite);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] UpdateLendingRecordAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("lendings").Document(record.LendingId.ToString()).SetAsync(record, SetOptions.Overwrite);
+            _lendings[record.LendingId] = record;
         }
         #endregion
 
@@ -418,14 +536,23 @@ namespace Assetra.Services
         public async Task<List<ConditionReport>> GetConditionReportsAsync()
         {
             List<ConditionReport> reports;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                reports = _conditionReports.Values.OrderByDescending(r => r.ReportId).ToList();
+                try
+                {
+                    var snap = await db.Collection("condition_reports").GetSnapshotAsync();
+                    reports = snap.Documents.Select(d => d.ConvertTo<ConditionReport>()).OrderByDescending(r => r.ReportId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetConditionReportsAsync failed.");
+                    reports = _conditionReports.Values.OrderByDescending(r => r.ReportId).ToList();
+                }
             }
             else
             {
-                var snap = await _fireDb.Collection("condition_reports").GetSnapshotAsync();
-                reports = snap.Documents.Select(d => d.ConvertTo<ConditionReport>()).OrderByDescending(r => r.ReportId).ToList();
+                reports = _conditionReports.Values.OrderByDescending(r => r.ReportId).ToList();
             }
 
             foreach (var r in reports)
@@ -442,14 +569,23 @@ namespace Assetra.Services
         public async Task<ConditionReport?> GetConditionReportByIdAsync(int reportId)
         {
             ConditionReport? report = null;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                if (_conditionReports.TryGetValue(reportId, out var r)) report = r;
+                try
+                {
+                    var doc = await db.Collection("condition_reports").Document(reportId.ToString()).GetSnapshotAsync();
+                    if (doc.Exists) report = doc.ConvertTo<ConditionReport>();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetConditionReportByIdAsync({Id}) failed.", reportId);
+                    if (_conditionReports.TryGetValue(reportId, out var r)) report = r;
+                }
             }
             else
             {
-                var doc = await _fireDb.Collection("condition_reports").Document(reportId.ToString()).GetSnapshotAsync();
-                if (doc.Exists) report = doc.ConvertTo<ConditionReport>();
+                if (_conditionReports.TryGetValue(reportId, out var r)) report = r;
             }
 
             if (report != null && report.LendingId != 0)
@@ -468,24 +604,38 @@ namespace Assetra.Services
                 report.ReportId = list.Count > 0 ? list.Max(r => r.ReportId) + 1 : 1;
             }
 
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _conditionReports[report.ReportId] = report;
-                return;
+                try
+                {
+                    await db.Collection("condition_reports").Document(report.ReportId.ToString()).SetAsync(report);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddConditionReportAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("condition_reports").Document(report.ReportId.ToString()).SetAsync(report);
+            _conditionReports[report.ReportId] = report;
         }
 
         public async Task UpdateConditionReportAsync(ConditionReport report)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _conditionReports[report.ReportId] = report;
-                return;
+                try
+                {
+                    await db.Collection("condition_reports").Document(report.ReportId.ToString()).SetAsync(report, SetOptions.Overwrite);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] UpdateConditionReportAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("condition_reports").Document(report.ReportId.ToString()).SetAsync(report, SetOptions.Overwrite);
+            _conditionReports[report.ReportId] = report;
         }
         #endregion
 
@@ -493,14 +643,23 @@ namespace Assetra.Services
         public async Task<List<ConditionHistory>> GetConditionHistoriesAsync()
         {
             List<ConditionHistory> histories;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                histories = _conditionHistories.Values.OrderByDescending(h => h.ConditionHistoryId).ToList();
+                try
+                {
+                    var snap = await db.Collection("condition_histories").GetSnapshotAsync();
+                    histories = snap.Documents.Select(d => d.ConvertTo<ConditionHistory>()).OrderByDescending(h => h.ConditionHistoryId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetConditionHistoriesAsync failed.");
+                    histories = _conditionHistories.Values.OrderByDescending(h => h.ConditionHistoryId).ToList();
+                }
             }
             else
             {
-                var snap = await _fireDb.Collection("condition_histories").GetSnapshotAsync();
-                histories = snap.Documents.Select(d => d.ConvertTo<ConditionHistory>()).OrderByDescending(h => h.ConditionHistoryId).ToList();
+                histories = _conditionHistories.Values.OrderByDescending(h => h.ConditionHistoryId).ToList();
             }
 
             foreach (var h in histories)
@@ -522,13 +681,20 @@ namespace Assetra.Services
                 history.ConditionHistoryId = list.Count > 0 ? list.Max(h => h.ConditionHistoryId) + 1 : 1;
             }
 
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _conditionHistories[history.ConditionHistoryId] = history;
-                return;
+                try
+                {
+                    await db.Collection("condition_histories").Document(history.ConditionHistoryId.ToString()).SetAsync(history);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddConditionHistoryAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("condition_histories").Document(history.ConditionHistoryId.ToString()).SetAsync(history);
+            _conditionHistories[history.ConditionHistoryId] = history;
         }
         #endregion
 
@@ -536,14 +702,23 @@ namespace Assetra.Services
         public async Task<List<MaintenanceRecord>> GetMaintenanceRecordsAsync()
         {
             List<MaintenanceRecord> records;
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                records = _maintenanceRecords.Values.OrderByDescending(m => m.MaintenanceId).ToList();
+                try
+                {
+                    var snap = await db.Collection("maintenance_records").GetSnapshotAsync();
+                    records = snap.Documents.Select(d => d.ConvertTo<MaintenanceRecord>()).OrderByDescending(m => m.MaintenanceId).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] GetMaintenanceRecordsAsync failed.");
+                    records = _maintenanceRecords.Values.OrderByDescending(m => m.MaintenanceId).ToList();
+                }
             }
             else
             {
-                var snap = await _fireDb.Collection("maintenance_records").GetSnapshotAsync();
-                records = snap.Documents.Select(d => d.ConvertTo<MaintenanceRecord>()).OrderByDescending(m => m.MaintenanceId).ToList();
+                records = _maintenanceRecords.Values.OrderByDescending(m => m.MaintenanceId).ToList();
             }
 
             foreach (var m in records)
@@ -565,24 +740,38 @@ namespace Assetra.Services
                 record.MaintenanceId = list.Count > 0 ? list.Max(m => m.MaintenanceId) + 1 : 1;
             }
 
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _maintenanceRecords[record.MaintenanceId] = record;
-                return;
+                try
+                {
+                    await db.Collection("maintenance_records").Document(record.MaintenanceId.ToString()).SetAsync(record);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] AddMaintenanceRecordAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("maintenance_records").Document(record.MaintenanceId.ToString()).SetAsync(record);
+            _maintenanceRecords[record.MaintenanceId] = record;
         }
 
         public async Task UpdateMaintenanceRecordAsync(MaintenanceRecord record)
         {
-            var _fireDb = GetDb(); if (_fireDb == null)
+            var db = GetDb();
+            if (db != null)
             {
-                _maintenanceRecords[record.MaintenanceId] = record;
-                return;
+                try
+                {
+                    await db.Collection("maintenance_records").Document(record.MaintenanceId.ToString()).SetAsync(record, SetOptions.Overwrite);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FIRESTORE] UpdateMaintenanceRecordAsync failed.");
+                }
             }
-
-            await _fireDb.Collection("maintenance_records").Document(record.MaintenanceId.ToString()).SetAsync(record, SetOptions.Overwrite);
+            _maintenanceRecords[record.MaintenanceId] = record;
         }
         #endregion
     }
