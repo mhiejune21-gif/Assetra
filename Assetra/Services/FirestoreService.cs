@@ -27,36 +27,47 @@ namespace Assetra.Services
         private static readonly ConcurrentDictionary<int, MaintenanceRecord> _maintenanceRecords = new();
         private static bool _seeded = false;
 
+        private const string EmbeddedBase64Creds = "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiYXNzZXRyYS1lZjE2NSIsCiAgInByaXZhdGVfa2V5X2lkIjogIjhlYzhkMWZiNzI3ZmM0ZWRiN2RhYjQ3MWM5MWY3NTQ3YWYwZDJkYzIiLAogICJwcml2YXRlX2tleSI6ICItLS0tLUJFR0lOIFBSSVZBVEUgS0VZLS0tLS1cbk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRQzVDRC9wbkVobmFSaCtcbkUybG1OVWViajA5YlcvNU1rSkVqcnBya0xmMnp0MWlOdGEzWVU4b1pvR2FOR1RwVzhJMC90M1ZxMkZURFZJTTFcbmtvanFnMmxxenFVc3RwL0FkZU5mcDJyQ21lMU9URU8yQURlU3VocnpHNXVLOHpxaVl5WSsxaElDVEt6b1E4ZkpcblB0OU9tNDhDaFhjamVnMFhwSGcxMnRudHZ5WTRpRDVyOHNDTjh1a2J3c21LdHpDWUQ1Rld2UXlmcmR3R283dmhcblFwNFhZdnNCQThIa1pWY2pBeHFqdU1TdUVIcmQwSzdzS0pvQVphb1pUdURKa0lwK2Qvck50Y3ZjaVNHb054VXRcbkU1Y1NMblV3MThHNnNqb2FYa3dsRmUvbjNnN1hMNlNLeWdJS0JaVWJRbExFL1VMNmhKY2xBdVdsRG9wa3kwSVJcbkdCWmFaUXJQQWdNQkFBRUNnZ0VBS0taMVZCOXZrTGg0Rndxd3R6R3hYNjJtWTQzY1dublFTU1NOQnVCTHduWGZcblVKSy9kSzFEMDBsMy9qdXlvM01KdFJ2YkFmUXcreERRR3E3c3dZakpXaHU0RWhDMUhCVktOTE9WTXRlYVdQOU1cblNPblhTN2J6UU1HcDlHYm5WTkd2ajFKOGRtRGVBOUVRVFZnd3V4WlYzdG52aUszQnZwWDFpdTlmdldtblBmZmdcbmtLV1ZrWnRjZ1FxOGsyRDFERWpnNlR2S3ZhQlNEeXpjTnozbWRaZ0c1d2h4NXdROExTSFNBNm9BQW1UYzhNVHVcbjBpeGQrcHZuc01IMWZaV3RjakdvbG1uVFdwTk9RdXRPbmlOQUo5ZFppb2kzOWxEODd3WDBMRk5udWFwTDZ5UlJcbm56aUI4aE5aSU9DeHBObjRVRzhJWWlOTGNycmlVdE9PeFlUVGVucnF3UUtCZ1FEd3dqekxJUUpHMjlMTGZ6QU9cbndzUHdCeWVheU5MNnVnM1ZLemdqRGdrZ29McnBZMjJWbGxJU201aWdpRkExQ2VQdWNTZFBKbFZ6TDVuUWlBZlNcbmxES1RWb3I1MjJySVpWR0lPaGZ1eWhRc1FMOUVhTk53MkNpVWxrTVVHK2NGNFg2aUFXRm9CUTVKWmk0U1pNcTZcblMxSE5mbzJPRVlXdHJUV1ZNUnA4WC8va3NRS0JnUURFdnViMURIdStsWlNrN2FwVVY3SnpKcjl4TElsenZ3bldcbjJXdnI4emxGVXI5alJUbEYySXJJa0wrcjMvZEMyT2ZROWZ6WU9SVkNQclArQllYUjEwdzN4eEI1WVdlV29uMnZcbnhkTFVKTlhncEJrb0J2K2ZNTHZka1MyYnFZR29Qc09ZTHZuWWRBaXk3M2o4TGNlTUYwdXFYeXBSR3Baa1dabXpcblppSEl5YjNIZndLQmdGMThqdTZ4V3BqNU10a2lBaDg1TWF3Nm12NVhqTlVlK2RBVWdDL2NlMTdZQ3J3bGg1L1dcblJ2aEN3dmxTOVJJalRRYUJtYW42VUtQeGorQ1JjYmdySTVoaXVvUmExeFFKZzZkS0o1RHBsdnU0Q0kwZnh6ckNcbk5NLzl1VDVOdDE5cE9DcmdMbHFkMi9aVVh2OTFjK0x5N0VqSEkyQlBIWUZiQ0x0dDNjTDk0L2VCQW9HQUtDOTlcbjZRdDFzd1hHYUxHS210T1d4V0ppcy9FTzJpOXBDUk03c2VQcURMak1FckN1OUE4NHVhS25JNm9KVFFRVXhWK1pcbkYya0JhSmg2RnlaMW9OakMzcG13U2JxVmQvVVVpdlJ6RFpYQWdiUEMxNlFtVGhPY0s3TmRoMi9sNWNGOEhmZHFcblhNWEdpUlhVdGwxN1pxZlRjcWNoYzVOa3FIYU1xRkh5RUpyMFFtMENnWUVBcjcrM1pCZ2NyVGxZd2Z3VkhNT2Vcbi9NYVNDbzhuL1JrNVJPb2JubU5FbUN6SXdnTjBmQ0FOa25wdWFob041T1RiU0ZXbW5BWFI4MVBxdjJybG9xTTJcbndWTVJpekI4aHNaL055UGU2WWordUl6SlpvdXpqckdEdTdLd1o4ek5rR0g0YXVJdjkyT1R6eEtmaENmOFFNUGRcbjkyUHIyaHJidUxmSmJGbWRvZkljR21ZPVxuLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLVxuIiwKICAiY2xpZW50X2VtYWlsIjogImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJjbGllbnRfaWQiOiAiMTEwNzMxOTY1NTI0MjY0MTg2NzM2IiwKICAiYXV0aF91cmkiOiAiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tL28vb2F1dGgyL2F1dGgiLAogICJ0b2tlbl91cmkiOiAiaHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4iLAogICJhdXRoX3Byb3ZpZGVyX3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vb2F1dGgyL3YxL2NlcnRzIiwKICAiY2xpZW50X3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vcm9ib3QvdjEvbWV0YWRhdGEveDUwOS9maXJlYmFzZS1hZG1pbnNkay1mYnN2YyU0MGFzc2V0cmEtZWYxNjUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBpcy5jb20iCn0K";
+
         public FirestoreService(IConfiguration config, ILogger<FirestoreService> logger)
         {
             _config = config;
             _logger = logger;
 
-            string projectId = _config["Firestore:ProjectId"] ?? string.Empty;
-            string credPath = _config["Firestore:CredentialsPath"] ?? string.Empty;
+            string projectId = _config["Firestore:ProjectId"] ?? "assetra-ef165";
+            string credPath = _config["Firestore:CredentialsPath"] ?? "firebase_key.json";
 
             if (!string.IsNullOrWhiteSpace(credPath) && File.Exists(credPath))
             {
                 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credPath);
             }
 
-            if (!string.IsNullOrWhiteSpace(projectId) && !projectId.Equals("YOUR_FIREBASE_PROJECT_ID", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                try
+                if (File.Exists(credPath))
                 {
                     _db = FirestoreDb.Create(projectId);
-                    _useInMemoryFallback = false;
-                    _logger.LogInformation("Successfully initialized Google Cloud Firestore for Project ID: {ProjectId}", projectId);
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogWarning(ex, "Failed to connect to Google Cloud Firestore with Project ID '{ProjectId}'. Operating in fallback mode.", projectId);
-                    _useInMemoryFallback = true;
+                    byte[] bytes = Convert.FromBase64String(EmbeddedBase64Creds);
+                    using (var stream = new System.IO.MemoryStream(bytes))
+                    {
+                        var builder = new FirestoreDbBuilder
+                        {
+                            ProjectId = projectId,
+                            Credential = Google.Apis.Auth.OAuth2.GoogleCredential.FromStream(stream)
+                        };
+                        _db = builder.Build();
+                    }
                 }
+
+                _useInMemoryFallback = false;
+                _logger.LogInformation("Successfully connected to Google Cloud Firestore for Project ID: {ProjectId}", projectId);
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogInformation("No valid Firestore Project ID configured. Running with initialized Firestore schema & in-memory provider.");
+                _logger.LogWarning(ex, "Failed to connect to Google Cloud Firestore with Project ID '{ProjectId}'. Operating in fallback mode.", projectId);
                 _useInMemoryFallback = true;
             }
         }
