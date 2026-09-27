@@ -433,5 +433,118 @@ namespace Assetra.Controllers
         {
             return RedirectToAction("ReturnTool", new { id = id });
         }
+
+        // =====================================
+        // PHASE 3: SMART KIOSK RETURN FLOW
+        // =====================================
+        
+        [HttpGet]
+        public IActionResult KioskReturn()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> IdentifyFaceForReturn([FromBody] Assetra.Controllers.FaceDataModel data)
+        {
+            try 
+            {
+                var liveDescriptor = System.Text.Json.JsonSerializer.Deserialize<float[]>(data.Descriptor);
+                if (liveDescriptor == null) return Json(new { success = false, message = "Invalid face data." });
+
+                var lendings = await _firestoreService.GetLendingRecordsAsync();
+                var activeLoans = lendings.Where(l => l.Status == "Borrowed" || l.Status == "Overdue").ToList();
+                var activeBorrowerIds = activeLoans.Where(l => l.BorrowedBy.HasValue).Select(l => l.BorrowedBy.Value).Distinct();
+
+                var users = await _firestoreService.GetUsersAsync();
+                var activeUsers = users.Where(u => activeBorrowerIds.Contains(u.UserId) && !string.IsNullOrEmpty(u.FaceDescriptor)).ToList();
+
+                Assetra.Models.User bestMatch = null;
+                float bestDistance = 0.55f; // Strict threshold for false positives
+
+                foreach (var u in activeUsers)
+                {
+                    var dbDesc = System.Text.Json.JsonSerializer.Deserialize<float[]>(u.FaceDescriptor);
+                    if (dbDesc == null || dbDesc.Length != liveDescriptor.Length) continue;
+
+                    float sum = 0;
+                    for (int i = 0; i < dbDesc.Length; i++)
+                    {
+                        float diff = dbDesc[i] - liveDescriptor[i];
+                        sum += diff * diff;
+                    }
+                    float dist = (float)Math.Sqrt(sum);
+
+                    if (dist < bestDistance)
+                    {
+                        bestDistance = dist;
+                        bestMatch = u;
+                    }
+                }
+
+                if (bestMatch != null)
+                {
+                    var userLoans = activeLoans
+                        .Where(l => l.BorrowedBy == bestMatch.UserId)
+                        .Select(l => new { 
+                            LendingId = l.LendingId, 
+                            ToolName = l.Property?.Name ?? "Unknown Tool", 
+                            ToolId = l.PropertyId,
+                            DateBorrowed = l.DateBorrowed.ToString("MMM dd, yyyy")
+                        }).ToList();
+
+                    return Json(new { success = true, user = bestMatch.FullName, loans = userLoans });
+                }
+
+                return Json(new { success = false, message = "No active loans found for this face." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ProcessKioskReturn(int lendingId, string condition)
+        {
+            var record = await _firestoreService.GetLendingRecordByIdAsync(lendingId);
+            if (record == null) return Json(new { success = false, message = "Record not found." });
+
+            if (record.Status == "Borrowed" || record.Status == "Overdue")
+            {
+                record.Status = "Returned";
+                record.DateReturned = DateTime.UtcNow;
+                record.ReturnedCondition = condition;
+                record.ProcessedBy = "Smart Kiosk";
+
+                if (!string.IsNullOrEmpty(record.PropertyId))
+                {
+                    var property = await _firestoreService.GetPropertyByIdAsync(record.PropertyId);
+                    if (property != null)
+                    {
+                        property.Status = "Available";
+                        property.ConditionStatus = condition;
+                        await _firestoreService.UpdatePropertyAsync(property);
+                    }
+
+                    var history = new Assetra.Models.ConditionHistory
+                    {
+                        PropertyId = record.PropertyId,
+                        RecordedBy = record.BorrowerName,
+                        
+                        
+                        ConditionStatus = condition,
+                        Notes = $"Returned via Smart Kiosk by {record.BorrowerName}",
+                        DateRecorded = DateTime.UtcNow
+                    };
+                    await _firestoreService.AddConditionHistoryAsync(history);
+                }
+
+                await _firestoreService.UpdateLendingRecordAsync(record);
+                return Json(new { success = true });
+            }
+
+            return Json(new { success = false, message = "Tool is not currently borrowed." });
+        }
     }
 }

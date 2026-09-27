@@ -1,0 +1,278 @@
+@{
+    ViewData["Title"] = "Smart Return Kiosk";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-indigo text-white rounded-circle mb-3 shadow-sm" style="width: 70px; height: 70px;">
+                    <i class="bi bi-box-arrow-in-right fs-1"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-1">Smart Return Kiosk</h3>
+                <p class="text-muted small">Scan your face to quickly return tools you have borrowed.</p>
+            </div>
+
+            <!-- STEP 1: SCAN FACE -->
+            <div id="step1-scan" class="card border-0 shadow-sm overflow-hidden mb-4">
+                <div class="card-header bg-dark text-white py-3 text-center border-0">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-bounding-box me-2"></i>Step 1: Identify Yourself</h5>
+                </div>
+                <div class="card-body p-4 text-center">
+                    <div class="position-relative mx-auto bg-dark rounded overflow-hidden shadow-sm" style="width: 280px; height: 280px; border: 3px solid #e0e7ff;" id="kioskVideoContainer">
+                        <video id="kioskVideoElement" width="280" height="280" autoplay muted style="object-fit: cover;"></video>
+                        
+                        <div id="kioskLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 10;">
+                            <div class="spinner-border text-light mb-2" role="status"></div>
+                            <span class="text-white small fw-bold" id="kioskLoadingText">Loading AI...</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-indigo fw-bold w-100 shadow-sm mt-4 py-2" id="btnScanFace" onclick="scanFace()" disabled>
+                        <i class="bi bi-camera me-2"></i>Scan Face
+                    </button>
+                    <p id="scanError" class="text-danger small mt-2 d-none fw-bold"></p>
+                </div>
+            </div>
+
+            <!-- STEP 2: CONFIRM RETURN -->
+            <div id="step2-confirm" class="card border-0 shadow-sm overflow-hidden mb-4 d-none">
+                <div class="card-header bg-indigo text-white py-3 border-0">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-check2-circle me-2"></i>Step 2: Confirm Return</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-success d-flex align-items-center py-2 px-3 border-0 rounded mb-4 shadow-sm" style="background-color: #ecfdf5;">
+                        <i class="bi bi-person-check-fill fs-3 text-success me-3"></i>
+                        <div>
+                            <span class="d-block small text-success fw-bold text-uppercase">Identity Verified</span>
+                            <strong class="text-dark fs-5" id="borrowerNameDisplay">Loading...</strong>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small fw-bold text-uppercase mb-2">Select tool to return:</p>
+                    <div id="loansContainer" class="list-group mb-4">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div id="conditionSection" class="d-none">
+                        <p class="text-muted small fw-bold text-uppercase mb-2">Current Condition:</p>
+                        <select id="returnCondition" class="form-select border-2 mb-4">
+                            <option value="Good">Good (No damage)</option>
+                            <option value="Minor Damage">Minor Damage (Scratches/Dents)</option>
+                            <option value="Damaged">Damaged (Needs repair)</option>
+                        </select>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary w-50" onclick="resetKiosk()">Cancel</button>
+                            <button class="btn btn-success w-50 fw-bold shadow-sm" id="btnConfirmReturn" onclick="processReturn()">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Return Tool
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- STEP 3: SUCCESS -->
+            <div id="step3-success" class="card border-0 shadow-sm overflow-hidden mb-4 d-none text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    <h3 class="fw-bold text-dark mt-3">Tool Returned!</h3>
+                    <p class="text-muted">Thank you. The tool is now available for others.</p>
+                    <button class="btn btn-outline-indigo mt-3 px-4" onclick="resetKiosk()">Return Another Tool</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-indigo { background-color: #4f46e5; color: white; }
+    .btn-indigo:hover { background-color: #4338ca; color: white; }
+    .bg-indigo { background-color: #4f46e5; }
+    .btn-outline-indigo { border-color: #4f46e5; color: #4f46e5; }
+    .btn-outline-indigo:hover { background-color: #4f46e5; color: white; }
+    
+    .loan-item { cursor: pointer; transition: all 0.2s; }
+    .loan-item:hover { background-color: #f8fafc; }
+    .loan-item.selected { background-color: #e0e7ff; border-color: #4f46e5; }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/dist/face-api.js"></script>
+    <script>
+        let video = document.getElementById('kioskVideoElement');
+        let stream = null;
+        let selectedLendingId = null;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            startCamera();
+        });
+
+        async function startCamera() {
+            const loadingText = document.getElementById('kioskLoadingText');
+            loadingText.innerText = "Loading AI Models...";
+            try {
+                const modelUrl = 'https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/model/';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl);
+            } catch (err) {
+                console.error("Model load error", err);
+                loadingText.innerText = "Failed to load AI.";
+                return;
+            }
+
+            loadingText.innerText = "Starting Camera...";
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+                video.srcObject = stream;
+                
+                video.onloadeddata = () => {
+                    video.play();
+                    document.getElementById('kioskLoadingOverlay').classList.add('d-none');
+                    document.getElementById('btnScanFace').disabled = false;
+                };
+            } catch (err) {
+                console.error("Camera error", err);
+                loadingText.innerText = "Camera Access Denied";
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                stream = null;
+            }
+        }
+
+        async function scanFace() {
+            const btn = document.getElementById('btnScanFace');
+            const errorMsg = document.getElementById('scanError');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analyzing...';
+            errorMsg.classList.add('d-none');
+
+            try {
+                await new Promise(r => setTimeout(r, 100)); // UI paint
+                
+                const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+                const detection = await faceapi.detectSingleFace(video, options)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (!detection) {
+                    errorMsg.innerText = "No face detected. Please look directly at the camera.";
+                    errorMsg.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+                    return;
+                }
+
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Searching database...';
+
+                const descriptorArray = Array.from(detection.descriptor);
+                const response = await fetch('/Lending/IdentifyFaceForReturn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Descriptor: JSON.stringify(descriptorArray) })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    stopCamera();
+                    showConfirmStep(result.user, result.loans);
+                } else {
+                    errorMsg.innerText = result.message || "Face not recognized as an active borrower.";
+                    errorMsg.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+                }
+            } catch (err) {
+                console.error(err);
+                errorMsg.innerText = "A network error occurred.";
+                errorMsg.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+            }
+        }
+
+        function showConfirmStep(userName, loans) {
+            document.getElementById('step1-scan').classList.add('d-none');
+            document.getElementById('step2-confirm').classList.remove('d-none');
+            document.getElementById('borrowerNameDisplay').innerText = userName;
+
+            const container = document.getElementById('loansContainer');
+            container.innerHTML = '';
+            
+            if (loans.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">You do not have any tools to return.</div>';
+                return;
+            }
+
+            loans.forEach(loan => {
+                const btn = document.createElement('button');
+                btn.className = 'list-group-item list-group-item-action loan-item d-flex justify-content-between align-items-center p-3 border-2 mb-2 rounded';
+                btn.innerHTML = `
+                    <div>
+                        <strong class="d-block text-dark">${loan.toolName}</strong>
+                        <span class="small text-muted font-monospace">${loan.toolId}</span>
+                    </div>
+                    <span class="badge bg-indigo rounded-pill">Borrowed: ${loan.dateBorrowed}</span>
+                `;
+                btn.onclick = () => selectLoan(btn, loan.lendingId);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectLoan(element, lendingId) {
+            document.querySelectorAll('.loan-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedLendingId = lendingId;
+            document.getElementById('conditionSection').classList.remove('d-none');
+        }
+
+        async function processReturn() {
+            if (!selectedLendingId) return;
+
+            const btn = document.getElementById('btnConfirmReturn');
+            const condition = document.getElementById('returnCondition').value;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Returning...';
+
+            try {
+                const formData = new FormData();
+                formData.append('lendingId', selectedLendingId);
+                formData.append('condition', condition);
+
+                const response = await fetch('/Lending/ProcessKioskReturn', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('step2-confirm').classList.add('d-none');
+                    document.getElementById('step3-success').classList.remove('d-none');
+                } else {
+                    alert("Error: " + result.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> Return Tool';
+                }
+            } catch (err) {
+                alert("Network error processing return.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> Return Tool';
+            }
+        }
+
+        function resetKiosk() {
+            window.location.reload();
+        }
+    </script>
+}
