@@ -33,7 +33,7 @@ namespace Assetra.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(MaintenanceRecord record)
         {
-            record.Status = "Scheduled";
+            record.Status = "Scheduled"; record.ScheduledDate = DateTime.SpecifyKind(record.ScheduledDate, DateTimeKind.Utc);
             
             if (string.IsNullOrWhiteSpace(record.Description))
             {

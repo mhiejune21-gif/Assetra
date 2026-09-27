@@ -314,7 +314,7 @@ namespace Assetra.Controllers
                 }
 
                 record.Status = "Borrowed";
-                record.DateBorrowed = DateTime.UtcNow;
+                record.DateBorrowed = DateTime.UtcNow; record.DueDate = DateTime.SpecifyKind(record.DueDate, DateTimeKind.Utc);
                 record.BorrowedCondition = property.ConditionStatus;
                 record.ProcessedBy = HttpContext.Session.GetString("FullName") ?? "Teacher";
                 
@@ -341,7 +341,7 @@ namespace Assetra.Controllers
                     }
                 }
                 record.Status = "Pending";
-                record.DateBorrowed = DateTime.UtcNow;
+                record.DateBorrowed = DateTime.UtcNow; record.DueDate = DateTime.SpecifyKind(record.DueDate, DateTimeKind.Utc);
                 record.BorrowedCondition = property.ConditionStatus;
             }
 

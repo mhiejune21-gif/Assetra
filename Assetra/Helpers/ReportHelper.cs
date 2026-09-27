@@ -50,7 +50,7 @@ namespace Assetra.Helpers
                     LendingId = record.LendingId,
                     IsScheduled = true,
                     ReportNumber = i + 1,
-                    ScheduledDate = record.DateBorrowed.Date.AddDays(offsets[i]),
+                    ScheduledDate = DateTime.SpecifyKind(record.DateBorrowed.Date.AddDays(offsets[i]), DateTimeKind.Utc),
                     Status = "Pending"
                 };
                 await firestoreService.AddConditionReportAsync(report);
