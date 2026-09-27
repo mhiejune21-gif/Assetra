@@ -99,7 +99,7 @@ namespace Assetra.Controllers
                             PropertyId = property.PropertyId,
                             ConditionStatus = "Good",
                             Notes = "Restored to Good condition after completing scheduled maintenance.",
-                            DateRecorded = DateTime.Now,
+                            DateRecorded = DateTime.UtcNow,
                             RecordedBy = HttpContext.Session.GetString("FullName") ?? "System"
                         };
                         await _firestoreService.AddConditionHistoryAsync(history);

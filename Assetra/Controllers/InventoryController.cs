@@ -37,7 +37,7 @@ namespace Assetra.Controllers
         public async Task<IActionResult> Create(Property property, IFormFile imageFile)
         {
             property.PropertyId = await GeneratePropertyIdAsync();
-            property.DateAdded = DateTime.Now;
+            property.DateAdded = DateTime.UtcNow;
             property.QrCodePath = GenerateQR(property.PropertyId);
             property.Status = "Available";
 
@@ -49,7 +49,7 @@ namespace Assetra.Controllers
                 PropertyId = property.PropertyId,
                 ConditionStatus = property.ConditionStatus,
                 Notes = "Initial registration of tool.",
-                DateRecorded = DateTime.Now,
+                DateRecorded = DateTime.UtcNow,
                 RecordedBy = HttpContext.Session.GetString("FullName") ?? "System"
             };
 
@@ -101,7 +101,7 @@ namespace Assetra.Controllers
                     PropertyId = property.PropertyId,
                     ConditionStatus = property.ConditionStatus,
                     Notes = $"Condition updated from '{existing.ConditionStatus}' to '{property.ConditionStatus}' via inventory edit.",
-                    DateRecorded = DateTime.Now,
+                    DateRecorded = DateTime.UtcNow,
                     RecordedBy = HttpContext.Session.GetString("FullName") ?? "System"
                 };
                 await _firestoreService.AddConditionHistoryAsync(history);

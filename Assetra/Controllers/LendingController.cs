@@ -314,7 +314,7 @@ namespace Assetra.Controllers
                 }
 
                 record.Status = "Borrowed";
-                record.DateBorrowed = DateTime.Now;
+                record.DateBorrowed = DateTime.UtcNow;
                 record.BorrowedCondition = property.ConditionStatus;
                 record.ProcessedBy = HttpContext.Session.GetString("FullName") ?? "Teacher";
                 
@@ -341,7 +341,7 @@ namespace Assetra.Controllers
                     }
                 }
                 record.Status = "Pending";
-                record.DateBorrowed = DateTime.Now;
+                record.DateBorrowed = DateTime.UtcNow;
                 record.BorrowedCondition = property.ConditionStatus;
             }
 
@@ -392,7 +392,7 @@ namespace Assetra.Controllers
             if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Pending")
             {
                 record.Status = "Returned";
-                record.DateReturned = DateTime.Now;
+                record.DateReturned = DateTime.UtcNow;
                 record.ReturnedCondition = returnedCondition;
                 record.ProcessedBy = HttpContext.Session.GetString("FullName") ?? "Teacher";
 
@@ -411,7 +411,7 @@ namespace Assetra.Controllers
                         PropertyId = record.PropertyId,
                         ConditionStatus = returnedCondition,
                         Notes = string.IsNullOrWhiteSpace(notes) ? $"Returned by student {record.BorrowerName}." : notes,
-                        DateRecorded = DateTime.Now,
+                        DateRecorded = DateTime.UtcNow,
                         RecordedBy = HttpContext.Session.GetString("FullName") ?? "Teacher"
                     };
                     await _firestoreService.AddConditionHistoryAsync(history);

@@ -78,7 +78,7 @@ namespace Assetra.Controllers
             if (record != null && record.Status == "Pending")
             {
                 record.Status = "Approved";
-                record.DateBorrowed = DateTime.Now;
+                record.DateBorrowed = DateTime.UtcNow;
 
                 if (!string.IsNullOrEmpty(record.PropertyId))
                 {

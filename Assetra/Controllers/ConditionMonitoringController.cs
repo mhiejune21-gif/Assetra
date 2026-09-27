@@ -148,7 +148,7 @@ namespace Assetra.Controllers
                 isNew = true;
             }
 
-            report.DateSubmitted = DateTime.Now;
+            report.DateSubmitted = DateTime.UtcNow;
             report.Condition = condition;
             report.Remarks = remarks;
             if (photoPath != null)
@@ -160,7 +160,7 @@ namespace Assetra.Controllers
             {
                 report.Status = "Approved";
                 report.ReviewedBy = "System";
-                report.DateReviewed = DateTime.Now;
+                report.DateReviewed = DateTime.UtcNow;
                 report.CustodianRemarks = "Automatically approved by system.";
             }
             else
@@ -196,7 +196,7 @@ namespace Assetra.Controllers
                         PropertyId = lending.PropertyId,
                         ConditionStatus = property.ConditionStatus,
                         Notes = $"Reported by borrower during monitoring: {remarks}",
-                        DateRecorded = DateTime.Now,
+                        DateRecorded = DateTime.UtcNow,
                         RecordedBy = HttpContext.Session.GetString("FullName") ?? "Borrower"
                     };
                     await _firestoreService.AddConditionHistoryAsync(history);
@@ -282,7 +282,7 @@ namespace Assetra.Controllers
             if (report == null) return NotFound();
 
             report.ReviewedBy = HttpContext.Session.GetString("FullName") ?? "Custodian";
-            report.DateReviewed = DateTime.Now;
+            report.DateReviewed = DateTime.UtcNow;
             report.CustodianRemarks = custodianRemarks;
 
             if (action == "Approve")
@@ -322,7 +322,7 @@ namespace Assetra.Controllers
                             PropertyId = report.Lending.PropertyId,
                             Description = $"[Condition Report Alert] Scanned by {report.Lending.BorrowerName}. Remarks: {report.Remarks}",
                             Status = "Scheduled",
-                            ScheduledDate = DateTime.Now
+                            ScheduledDate = DateTime.UtcNow
                         };
                         await _firestoreService.AddMaintenanceRecordAsync(maintenance);
 
@@ -331,7 +331,7 @@ namespace Assetra.Controllers
                             PropertyId = report.Lending.PropertyId,
                             ConditionStatus = "Damaged",
                             Notes = $"Sent to maintenance via custodian review: {custodianRemarks}",
-                            DateRecorded = DateTime.Now,
+                            DateRecorded = DateTime.UtcNow,
                             RecordedBy = report.ReviewedBy
                         };
                         await _firestoreService.AddConditionHistoryAsync(history);
