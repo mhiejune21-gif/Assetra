@@ -76,7 +76,36 @@ namespace Assetra.Controllers
 
             ViewBag.ReturnedHistory = returnedHistory;
 
+            var currentUser = await _firestoreService.GetUserByIdAsync(userId);
+            ViewBag.CurrentUser = currentUser;
+
             return View();
         }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveFaceData([FromBody] FaceDataModel data)
+        {
+            var userIdString = HttpContext.Session.GetString("UserId");
+            if (!int.TryParse(userIdString, out int userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _firestoreService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.FaceDescriptor = data.Descriptor;
+            await _firestoreService.UpdateUserAsync(user);
+
+            return Ok(new { success = true });
+        }
+    }
+
+    public class FaceDataModel
+    {
+        public string Descriptor { get; set; } = string.Empty;
     }
 }

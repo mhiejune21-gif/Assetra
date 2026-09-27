@@ -45,10 +45,25 @@
         <h4 class="mb-1 fw-bold text-dark">Welcome back, @Context.Session.GetString("FullName")!</h4>
         <p class="text-muted small mb-0">Student Asset & Equipment Borrowing Portal</p>
     </div>
-    <!-- Scan QR Code Button for Student -->
-    <a href="/Lending/Scan" class="btn btn-indigo shadow-sm py-2 px-3 fw-bold">
-        <i class="bi bi-qr-code-scan me-2 text-warning"></i>Scan QR to Borrow
-    </a>
+    <div class="d-flex gap-2">
+        @if (ViewBag.CurrentUser != null && string.IsNullOrEmpty(((Assetra.Models.User)ViewBag.CurrentUser).FaceDescriptor))
+        {
+            <button class="btn btn-warning shadow-sm py-2 px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#faceEnrollModal" onclick="startEnrollment()">
+                <i class="bi bi-person-bounding-box me-2"></i>Set Up Face ID
+            </button>
+        }
+        else if (ViewBag.CurrentUser != null)
+        {
+            <span class="btn btn-outline-success shadow-sm py-2 px-3 fw-bold" style="pointer-events: none;">
+                <i class="bi bi-check-circle-fill me-2"></i>Face ID Active
+            </span>
+        }
+        
+        <!-- Scan QR Code Button for Student -->
+        <a href="/Lending/Scan" class="btn btn-indigo shadow-sm py-2 px-3 fw-bold">
+            <i class="bi bi-qr-code-scan me-2 text-warning"></i>Scan QR to Borrow
+        </a>
+    </div>
 </div>
 
 <div class="row">
@@ -338,3 +353,137 @@
         font-size: 11px;
     }
 </style>
+
+<!-- Face ID Enrollment Modal -->
+<div class="modal fade" id="faceEnrollModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="faceEnrollModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-indigo text-white">
+                <h5 class="modal-title fw-bold" id="faceEnrollModalLabel"><i class="bi bi-person-bounding-box me-2"></i>Set Up Face ID</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopCamera()"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <p class="text-muted small mb-3">Please look directly at the camera. Ensure you are in a well-lit area.</p>
+                
+                <div class="position-relative mx-auto bg-dark rounded overflow-hidden shadow-sm" style="width: 300px; height: 300px; border: 3px solid #e0e7ff;" id="videoContainer">
+                    <video id="videoElement" width="300" height="300" autoplay muted style="object-fit: cover;"></video>
+                    
+                    <div id="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" style="background: rgba(0,0,0,0.7); z-index: 10;">
+                        <div class="spinner-border text-light mb-2" role="status"></div>
+                        <span class="text-white small fw-bold" id="loadingText">Loading Models...</span>
+                    </div>
+
+                    <div id="successOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center d-none" style="background: rgba(16, 185, 129, 0.9); z-index: 20;">
+                        <i class="bi bi-check-circle-fill text-white" style="font-size: 4rem;"></i>
+                        <span class="text-white fw-bold mt-2">Face Registered!</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-indigo fw-bold w-100 shadow-sm" id="captureBtn" onclick="captureFace()" disabled>
+                        <i class="bi bi-camera me-2"></i>Scan Face
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/dist/face-api.js"></script>
+<script>
+    let video = document.getElementById('videoElement');
+    let stream = null;
+    let modelsLoaded = false;
+    let faceDescriptor = null;
+
+    async function startEnrollment() {
+        if (!modelsLoaded) {
+            document.getElementById('loadingText').innerText = "Loading AI Models...";
+            try {
+                const modelUrl = 'https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/model/';
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(modelUrl);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl);
+                modelsLoaded = true;
+            } catch (err) {
+                console.error("Error loading models:", err);
+                document.getElementById('loadingText').innerText = "Failed to load AI.";
+                return;
+            }
+        }
+
+        document.getElementById('loadingText').innerText = "Starting Camera...";
+        
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+            video.srcObject = stream;
+            
+            video.onplay = () => {
+                document.getElementById('loadingOverlay').classList.add('d-none');
+                document.getElementById('captureBtn').disabled = false;
+            };
+        } catch (err) {
+            console.error("Camera access denied or unavailable.", err);
+            document.getElementById('loadingText').innerText = "Camera Access Denied";
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            stream = null;
+        }
+        document.getElementById('loadingOverlay').classList.remove('d-none');
+        document.getElementById('captureBtn').disabled = true;
+    }
+
+    async function captureFace() {
+        const btn = document.getElementById('captureBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Scanning...';
+
+        try {
+            // Detect single face with landmarks and descriptor
+            const detection = await faceapi.detectSingleFace(video)
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+
+            if (!detection) {
+                alert("No face detected! Please ensure you are in a well-lit area and looking directly at the camera.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+                return;
+            }
+
+            // Successfully grabbed descriptor
+            const descriptorArray = Array.from(detection.descriptor);
+            const descriptorJson = JSON.stringify(descriptorArray);
+
+            // Send to server
+            const response = await fetch('/UserPortal/SaveFaceData', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Descriptor: descriptorJson })
+            });
+
+            if (response.ok) {
+                document.getElementById('successOverlay').classList.remove('d-none');
+                stopCamera();
+                
+                setTimeout(() => {
+                    window.location.reload(); // Reload to show 'Face ID Active' button
+                }, 1500);
+            } else {
+                alert("Failed to save face data to the server.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+            }
+        } catch (err) {
+            console.error("Error during face capture:", err);
+            alert("An error occurred during scanning. Please try again.");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
+        }
+    }
+</script>

@@ -24,6 +24,9 @@ namespace Assetra.Models
         public string Role { get; set; } = "User";
 
         [FirestoreProperty]
+        public string? FaceDescriptor { get; set; }
+
+        [FirestoreProperty]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
