@@ -77,9 +77,6 @@ namespace Assetra.Controllers
             var record = await _firestoreService.GetLendingRecordByIdAsync(id);
             if (record != null && record.Status == "Pending")
             {
-                record.Status = "Approved";
-                record.DateBorrowed = DateTime.UtcNow;
-
                 if (!string.IsNullOrEmpty(record.PropertyId))
                 {
                     var property = await _firestoreService.GetPropertyByIdAsync(record.PropertyId);
@@ -88,6 +85,12 @@ namespace Assetra.Controllers
                         var lendings = await _firestoreService.GetLendingRecordsAsync();
                         int activeBorrows = lendings
                             .Count(l => l.PropertyId == record.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved"));
+
+                        if (activeBorrows >= property.Quantity)
+                        {
+                            TempData["Error"] = $"Cannot approve request. All {property.Quantity} units of '{property.Name}' are already on loan.";
+                            return RedirectToAction("Index");
+                        }
 
                         if (activeBorrows + 1 >= property.Quantity)
                         {
@@ -100,6 +103,9 @@ namespace Assetra.Controllers
                         await _firestoreService.UpdatePropertyAsync(property);
                     }
                 }
+
+                record.Status = "Approved";
+                record.DateBorrowed = DateTime.UtcNow;
 
                 await _firestoreService.UpdateLendingRecordAsync(record);
                 await ReportHelper.GenerateReportScheduleAsync(_firestoreService, record);
