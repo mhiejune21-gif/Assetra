@@ -453,14 +453,14 @@ namespace Assetra.Controllers
                 if (liveDescriptor == null) return Json(new { success = false, message = "Invalid face data." });
 
                 var lendings = await _firestoreService.GetLendingRecordsAsync();
-                var activeLoans = lendings.Where(l => l.Status == "Borrowed" || l.Status == "Overdue").ToList();
+                var activeLoans = lendings.Where(l => l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue").ToList();
                 var activeBorrowerIds = activeLoans.Where(l => l.BorrowedBy.HasValue).Select(l => l.BorrowedBy.Value).Distinct();
 
                 var users = await _firestoreService.GetUsersAsync();
                 var activeUsers = users.Where(u => activeBorrowerIds.Contains(u.UserId) && !string.IsNullOrEmpty(u.FaceDescriptor)).ToList();
 
                 Assetra.Models.User bestMatch = null;
-                float bestDistance = 0.55f; // Strict threshold for false positives
+                float bestDistance = 0.60f; // Strict threshold for false positives
 
                 foreach (var u in activeUsers)
                 {
@@ -510,7 +510,7 @@ namespace Assetra.Controllers
             var record = await _firestoreService.GetLendingRecordByIdAsync(lendingId);
             if (record == null) return Json(new { success = false, message = "Record not found." });
 
-            if (record.Status == "Borrowed" || record.Status == "Overdue")
+            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue")
             {
                 record.Status = "Returned";
                 record.DateReturned = DateTime.UtcNow;
