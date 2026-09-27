@@ -389,7 +389,7 @@ namespace Assetra.Controllers
                 return RedirectToAction("Index");
             }
 
-            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Pending")
+            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Pending" || record.Status == "Pending Return")
             {
                 record.Status = "Returned";
                 record.DateReturned = DateTime.UtcNow;
@@ -512,33 +512,9 @@ namespace Assetra.Controllers
 
             if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue")
             {
-                record.Status = "Returned";
-                record.DateReturned = DateTime.UtcNow;
+                record.Status = "Pending Return";
                 record.ReturnedCondition = condition;
-                record.ProcessedBy = "Smart Kiosk";
-
-                if (!string.IsNullOrEmpty(record.PropertyId))
-                {
-                    var property = await _firestoreService.GetPropertyByIdAsync(record.PropertyId);
-                    if (property != null)
-                    {
-                        property.Status = "Available";
-                        property.ConditionStatus = condition;
-                        await _firestoreService.UpdatePropertyAsync(property);
-                    }
-
-                    var history = new Assetra.Models.ConditionHistory
-                    {
-                        PropertyId = record.PropertyId,
-                        RecordedBy = record.BorrowerName,
-                        
-                        
-                        ConditionStatus = condition,
-                        Notes = $"Returned via Smart Kiosk by {record.BorrowerName}",
-                        DateRecorded = DateTime.UtcNow
-                    };
-                    await _firestoreService.AddConditionHistoryAsync(history);
-                }
+                record.ProcessedBy = "Smart Kiosk (Pending Admin)";
 
                 await _firestoreService.UpdateLendingRecordAsync(record);
                 return Json(new { success = true });
