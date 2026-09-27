@@ -394,14 +394,14 @@
     let video = document.getElementById('videoElement');
     let stream = null;
     let modelsLoaded = false;
-    let faceDescriptor = null;
 
     async function startEnrollment() {
         if (!modelsLoaded) {
             document.getElementById('loadingText').innerText = "Loading AI Models...";
             try {
                 const modelUrl = 'https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/model/';
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(modelUrl);
+                // Use TinyFaceDetector - much faster on phones/laptops than SSD Mobilenet
+                await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl);
                 modelsLoaded = true;
@@ -418,7 +418,8 @@
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
             video.srcObject = stream;
             
-            video.onplay = () => {
+            video.onloadeddata = () => {
+                video.play();
                 document.getElementById('loadingOverlay').classList.add('d-none');
                 document.getElementById('captureBtn').disabled = false;
             };
@@ -441,11 +442,15 @@
     async function captureFace() {
         const btn = document.getElementById('captureBtn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Scanning...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analyzing Face...';
 
         try {
-            // Detect single face with landmarks and descriptor
-            const detection = await faceapi.detectSingleFace(video)
+            // Give the UI a tiny moment to update before freezing the thread with ML processing
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Detect single face using TinyFaceDetector
+            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            const detection = await faceapi.detectSingleFace(video, options)
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
@@ -456,11 +461,11 @@
                 return;
             }
 
-            // Successfully grabbed descriptor
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Saving...';
+
             const descriptorArray = Array.from(detection.descriptor);
             const descriptorJson = JSON.stringify(descriptorArray);
 
-            // Send to server
             const response = await fetch('/UserPortal/SaveFaceData', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -470,10 +475,7 @@
             if (response.ok) {
                 document.getElementById('successOverlay').classList.remove('d-none');
                 stopCamera();
-                
-                setTimeout(() => {
-                    window.location.reload(); // Reload to show 'Face ID Active' button
-                }, 1500);
+                setTimeout(() => { window.location.reload(); }, 1500);
             } else {
                 alert("Failed to save face data to the server.");
                 btn.disabled = false;
@@ -481,7 +483,7 @@
             }
         } catch (err) {
             console.error("Error during face capture:", err);
-            alert("An error occurred during scanning. Please try again.");
+            alert("An error occurred during scanning. Error: " + err.message);
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-camera me-2"></i>Scan Face';
         }
