@@ -125,6 +125,40 @@
     </div>
 </div>
 
+<!-- Face Verification Modal -->
+<div class="modal fade" id="faceVerifyModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="faceVerifyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold" id="faceVerifyModalLabel"><i class="bi bi-person-bounding-box me-2"></i>Verify Identity</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopVerificationCamera()"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted small mb-3">Please look at the camera to verify your identity before borrowing.</p>
+                
+                <div class="position-relative mx-auto bg-dark rounded overflow-hidden shadow-sm" style="width: 300px; height: 300px; border: 3px solid #e0e7ff;" id="verifyVideoContainer">
+                    <video id="verifyVideoElement" width="300" height="300" autoplay muted style="object-fit: cover;"></video>
+                    
+                    <div id="verifyLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" style="background: rgba(0,0,0,0.7); z-index: 10;">
+                        <div class="spinner-border text-light mb-2" role="status"></div>
+                        <span class="text-white small fw-bold" id="verifyLoadingText">Loading Camera...</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button class="btn btn-warning fw-bold w-100 shadow-sm" id="verifyBtn" onclick="verifyFace()" disabled>
+                        <i class="bi bi-shield-lock me-2"></i>Verify Face
+                    </button>
+                    <!-- Fallback -->
+                    <button class="btn btn-link text-muted small mt-2" onclick="bypassVerification()" style="font-size: 11px;">
+                        Camera broken? Use PIN fallback
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmBorrowModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -197,11 +231,26 @@
 </style>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/dist/face-api.js"></script>
     <script>
+        // Store enrolled face data from the server
+        const enrolledFaceStr = '@Html.Raw(studentInfo?.FaceDescriptor ?? "")';
+        let enrolledDescriptor = null;
+        if (enrolledFaceStr && enrolledFaceStr.length > 5) {
+            try {
+                enrolledDescriptor = new Float32Array(JSON.parse(enrolledFaceStr));
+            } catch(e) { console.error("Could not parse face descriptor", e); }
+        }
+
+        const role = "@role";
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmBorrowModal'));
+        const faceVerifyModal = new bootstrap.Modal(document.getElementById('faceVerifyModal'));
+        
+        let verifyVideo = document.getElementById('verifyVideoElement');
+        let verifyStream = null;
+        let verifyModelsLoaded = false;
+
         document.addEventListener("DOMContentLoaded", function () {
-            const role = "@role";
-            const confirmModal = new bootstrap.Modal(document.getElementById('confirmBorrowModal'));
-            
             const btnSubmitCheck = document.getElementById("btnSubmitCheck");
             const btnConfirmSubmit = document.getElementById("btnConfirmSubmit");
             const borrowForm = document.getElementById("borrowForm");
@@ -234,44 +283,17 @@
                     return;
                 }
 
-                // Gather details for summary
-                const propertySelect = document.getElementById("propertySelect");
-                const selectedToolOpt = propertySelect.options[propertySelect.selectedIndex];
-                const toolName = selectedToolOpt.getAttribute("data-name");
-                const toolId = selectedToolOpt.value;
-                const toolCondition = selectedToolOpt.getAttribute("data-condition");
-
-                let studentName = "";
-                let studentId = "";
-
-                if (role === "Admin") {
-                    studentName = document.getElementById("borrowerNameInput").value;
-                    studentId = document.getElementById("studentIdInput").value;
+                if (role !== "Admin" && enrolledDescriptor) {
+                    // Show Face Verification Modal first
+                    faceVerifyModal.show();
+                    startVerificationCamera();
                 } else {
-                    studentName = borrowForm.querySelector("input[name='BorrowerName']").value;
-                    studentId = borrowForm.querySelector("input[name='StudentId']").value;
+                    // Skip directly to summary (Admin or no face registered)
+                    if (role !== "Admin" && !enrolledDescriptor) {
+                        alert("Note: You have not set up your Face ID. Proceeding without facial verification.");
+                    }
+                    showSummaryModal();
                 }
-
-                const dueDate = document.getElementById("dueDateInput").value;
-
-                // Update summary elements
-                document.getElementById("summaryToolName").innerText = toolName;
-                document.getElementById("summaryToolId").innerText = `ID: ${toolId}`;
-                document.getElementById("summaryStudentName").innerText = studentName;
-                document.getElementById("summaryStudentId").innerText = `Student ID: ${studentId}`;
-                document.getElementById("summaryCondition").innerText = toolCondition;
-                document.getElementById("summaryDueDate").innerText = dueDate;
-
-                // Set condition color class
-                const condBadge = document.getElementById("summaryCondition");
-                condBadge.className = "badge";
-                if (toolCondition === "Good") condBadge.classList.add("bg-success");
-                else if (toolCondition === "Minor Damage") condBadge.classList.add("bg-info", "text-dark");
-                else if (toolCondition === "Damaged") condBadge.classList.add("bg-warning", "text-dark");
-                else condBadge.classList.add("bg-danger");
-
-                // Show modal
-                confirmModal.show();
             });
 
             // Final submit trigger
@@ -280,6 +302,149 @@
                 borrowForm.submit();
             });
         });
+
+        // ==========================================
+        // FACIAL VERIFICATION LOGIC
+        // ==========================================
+        
+        async function startVerificationCamera() {
+            const loadingText = document.getElementById('verifyLoadingText');
+            if (!verifyModelsLoaded) {
+                loadingText.innerText = "Loading AI Models...";
+                try {
+                    const modelUrl = 'https://cdn.jsdelivr.net/npm/@@vladmandic/face-api/model/';
+                    await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
+                    await faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl);
+                    await faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl);
+                    verifyModelsLoaded = true;
+                } catch (err) {
+                    console.error("Error loading models:", err);
+                    loadingText.innerText = "Failed to load AI.";
+                    return;
+                }
+            }
+
+            loadingText.innerText = "Starting Camera...";
+            try {
+                verifyStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+                verifyVideo.srcObject = verifyStream;
+                
+                verifyVideo.onloadeddata = () => {
+                    verifyVideo.play();
+                    document.getElementById('verifyLoadingOverlay').classList.add('d-none');
+                    document.getElementById('verifyBtn').disabled = false;
+                };
+            } catch (err) {
+                console.error("Camera access denied.", err);
+                loadingText.innerText = "Camera Access Denied";
+            }
+        }
+
+        function stopVerificationCamera() {
+            if (verifyStream) {
+                verifyStream.getTracks().forEach(track => track.stop());
+                verifyVideo.srcObject = null;
+                verifyStream = null;
+            }
+            document.getElementById('verifyLoadingOverlay').classList.remove('d-none');
+            document.getElementById('verifyBtn').disabled = true;
+        }
+
+        async function verifyFace() {
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analyzing...';
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100)); // UI paint
+
+                const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+                const detection = await faceapi.detectSingleFace(verifyVideo, options)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (!detection) {
+                    alert("No face detected! Look directly at the camera in a well-lit area.");
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Verify Face';
+                    return;
+                }
+
+                // Compare with enrolled descriptor
+                const distance = faceapi.euclideanDistance(detection.descriptor, enrolledDescriptor);
+                
+                // 0.6 is the standard threshold for face-api.js recognition
+                if (distance < 0.6) {
+                    // Match successful!
+                    btn.classList.replace('btn-warning', 'btn-success');
+                    btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Verified!';
+                    
+                    setTimeout(() => {
+                        stopVerificationCamera();
+                        faceVerifyModal.hide();
+                        showSummaryModal();
+                    }, 1000);
+                } else {
+                    alert("Face does not match the registered user! (Distance: " + distance.toFixed(2) + ")");
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Verify Face';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error analyzing face.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Verify Face';
+            }
+        }
+
+        function bypassVerification() {
+            const pin = prompt("Enter Admin Override PIN to bypass facial recognition:");
+            if (pin === "1234") { // Simple fallback PIN, in real-world use a server-side check
+                stopVerificationCamera();
+                faceVerifyModal.hide();
+                showSummaryModal();
+            } else {
+                alert("Invalid PIN.");
+            }
+        }
+
+        function showSummaryModal() {
+            // Gather details for summary
+            const propertySelect = document.getElementById("propertySelect");
+            const selectedToolOpt = propertySelect.options[propertySelect.selectedIndex];
+            const toolName = selectedToolOpt.getAttribute("data-name");
+            const toolId = selectedToolOpt.value;
+            const toolCondition = selectedToolOpt.getAttribute("data-condition");
+
+            let studentName = "";
+            let studentId = "";
+
+            if (role === "Admin") {
+                studentName = document.getElementById("borrowerNameInput").value;
+                studentId = document.getElementById("studentIdInput").value;
+            } else {
+                studentName = document.getElementById("borrowForm").querySelector("input[name='BorrowerName']").value;
+                studentId = document.getElementById("borrowForm").querySelector("input[name='StudentId']").value;
+            }
+
+            const dueDate = document.getElementById("dueDateInput").value;
+
+            document.getElementById("summaryToolName").innerText = toolName;
+            document.getElementById("summaryToolId").innerText = `ID: ${toolId}`;
+            document.getElementById("summaryStudentName").innerText = studentName;
+            document.getElementById("summaryStudentId").innerText = `Student ID: ${studentId}`;
+            document.getElementById("summaryCondition").innerText = toolCondition;
+            document.getElementById("summaryDueDate").innerText = dueDate;
+
+            const condBadge = document.getElementById("summaryCondition");
+            condBadge.className = "badge";
+            if (toolCondition === "Good") condBadge.classList.add("bg-success");
+            else if (toolCondition === "Minor Damage") condBadge.classList.add("bg-info", "text-dark");
+            else if (toolCondition === "Damaged") condBadge.classList.add("bg-warning", "text-dark");
+            else condBadge.classList.add("bg-danger");
+
+            confirmModal.show();
+        }
     </script>
 }
 
