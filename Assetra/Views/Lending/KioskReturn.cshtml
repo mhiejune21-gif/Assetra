@@ -66,8 +66,31 @@
                         
                         <div class="d-flex gap-2">
                             <button class="btn btn-outline-secondary w-50" onclick="resetKiosk()">Cancel</button>
-                            <button class="btn btn-success w-50 fw-bold shadow-sm" id="btnConfirmReturn" onclick="processReturn()">
+                            <button class="btn btn-success w-50 fw-bold shadow-sm" id="btnConfirmReturn" onclick="promptConfirmReturn()">
                                 <i class="bi bi-box-arrow-in-right me-1"></i> Return Tool
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MODAL: FINAL CONFIRMATION -->
+            <div class="modal fade" id="kioskConfirmModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-warning text-dark border-0">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Hand Over Required</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4 text-center">
+                            <i class="bi bi-person-badge fs-1 text-secondary mb-3 d-block"></i>
+                            <h5 class="fw-bold mb-3">Please hand the item to the Admin/Teacher now.</h5>
+                            <p class="text-muted mb-0">By confirming this action, you verify that you have physically returned the item to the authorized personnel.</p>
+                        </div>
+                        <div class="modal-footer border-0 d-flex justify-content-center bg-light">
+                            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success px-4 fw-bold shadow-sm" onclick="confirmAndProcessReturn()">
+                                <i class="bi bi-check-circle me-1"></i> Yes, I have handed it over
                             </button>
                         </div>
                     </div>
@@ -245,6 +268,21 @@
             element.classList.add('selected');
             selectedLendingId = lendingId;
             document.getElementById('conditionSection').classList.remove('d-none');
+        }
+
+        function promptConfirmReturn() {
+            if (!selectedLendingId) return;
+            var myModal = new bootstrap.Modal(document.getElementById('kioskConfirmModal'));
+            myModal.show();
+        }
+
+        function confirmAndProcessReturn() {
+            var modalEl = document.getElementById('kioskConfirmModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                modal.hide();
+            }
+            processReturn();
         }
 
         async function processReturn() {
