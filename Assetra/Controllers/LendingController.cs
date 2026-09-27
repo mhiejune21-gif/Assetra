@@ -22,7 +22,7 @@ namespace Assetra.Controllers
 
         public override void OnActionExecuting(ActionExecutingContext context)
         {
-            var userId = HttpContext.Session.GetString("UserId");
+            var userId = HttpContext.Session.GetString("UserId"); var actionName = ((Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor)context.ActionDescriptor).ActionName; if (actionName == "KioskReturn" || actionName == "IdentifyFaceForReturn" || actionName == "ProcessKioskReturn") { base.OnActionExecuting(context); return; }
             if (string.IsNullOrEmpty(userId))
             {
                 context.Result = RedirectToAction("Login", "Account");
