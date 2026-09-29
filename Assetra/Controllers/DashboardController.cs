@@ -24,8 +24,13 @@ namespace Assetra.Controllers
 
             var today = DateTime.Today;
 
-            var allProps = await _firestoreService.GetPropertiesAsync();
-            var allLendings = await _firestoreService.GetLendingRecordsAsync();
+            // Run both Firestore calls in parallel instead of sequentially
+            var propsTask = _firestoreService.GetPropertiesAsync();
+            var lendingsTask = _firestoreService.GetLendingRecordsAsync();
+            await Task.WhenAll(propsTask, lendingsTask);
+
+            var allProps = propsTask.Result;
+            var allLendings = lendingsTask.Result;
 
             int totalAvailable = 0;
             int totalBorrowed = 0;

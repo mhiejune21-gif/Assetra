@@ -478,17 +478,15 @@ namespace Assetra.Services
                 records = _lendings.Values.OrderByDescending(l => l.LendingId).ToList();
             }
 
-            // Populate relational navigation properties
+            // Populate relational navigation properties using a single batch fetch (no N+1 queries)
+            var allProperties = (await GetPropertiesAsync()).ToDictionary(p => p.PropertyId);
+            var allUsers = (await GetUsersAsync()).ToDictionary(u => u.UserId);
             foreach (var rec in records)
             {
-                if (!string.IsNullOrEmpty(rec.PropertyId))
-                {
-                    rec.Property = await GetPropertyByIdAsync(rec.PropertyId);
-                }
-                if (rec.BorrowedBy.HasValue)
-                {
-                    rec.User = await GetUserByIdAsync(rec.BorrowedBy.Value);
-                }
+                if (!string.IsNullOrEmpty(rec.PropertyId) && allProperties.TryGetValue(rec.PropertyId, out var prop))
+                    rec.Property = prop;
+                if (rec.BorrowedBy.HasValue && allUsers.TryGetValue(rec.BorrowedBy.Value, out var user))
+                    rec.User = user;
             }
 
             return records;
