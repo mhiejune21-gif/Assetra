@@ -75,7 +75,7 @@ namespace Assetra.Controllers
 
         // Process report submission
         [HttpPost]
-        public async Task<IActionResult> SubmitReport(int lendingId, int? reportId, string condition, string remarks, IFormFile photoFile)
+        public async Task<IActionResult> SubmitReport(int lendingId, int? reportId, string condition, string remarks, string? photoBase64)
         {
             var userIdString = HttpContext.Session.GetString("UserId");
             if (string.IsNullOrEmpty(userIdString))
@@ -104,30 +104,7 @@ namespace Assetra.Controllers
                 }
             }
 
-            string? photoPath = null;
-            if (photoFile != null && photoFile.Length > 0)
-            {
-                try
-                {
-                    string folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "reports");
-                    if (!Directory.Exists(folder))
-                        Directory.CreateDirectory(folder);
-
-                    string fileName = $"{Guid.NewGuid()}_{Path.GetFileName(photoFile.FileName)}";
-                    string filePath = Path.Combine(folder, fileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        photoFile.CopyTo(stream);
-                    }
-                    photoPath = $"/images/reports/{fileName}";
-                }
-                catch (Exception ex)
-                {
-                    TempData["Error"] = $"Error saving uploaded file: {ex.Message}";
-                    return RedirectToAction("SubmitReport", new { lendingId = lendingId, reportId = reportId });
-                }
-            }
+            string? photoPath = photoBase64;
 
             ConditionReport report;
             bool isNew = false;
@@ -292,13 +269,13 @@ namespace Assetra.Controllers
             }
             else if (action == "RequestReturn")
             {
-                report.Status = "ReturnRequested";
+                report.Status = "Immediate Return";
                 if (report.Lending != null)
                 {
-                    report.Lending.Status = "Return Requested";
+                    report.Lending.Status = "Immediate Return";
                     await _firestoreService.UpdateLendingRecordAsync(report.Lending);
                 }
-                TempData["Success"] = "Return requested. Borrower has been notified to return the asset.";
+                TempData["Success"] = "Immediate return requested. Borrower has been notified to return the asset.";
             }
             else if (action == "SendToMaintenance")
             {

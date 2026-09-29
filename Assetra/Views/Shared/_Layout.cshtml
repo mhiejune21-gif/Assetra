@@ -249,8 +249,6 @@
             {
                 <a href="/Dashboard" class="nav-link-item"><i class="bi bi-speedometer2"></i> Dashboard</a>
                 <a href="/Inventory" class="nav-link-item"><i class="bi bi-box-seam"></i> Tool Inventory</a>
-                <a href="/Lending/Scan" class="nav-link-item"><i class="bi bi-camera"></i> Scan QR Code</a>
-                <a href="/Lending/Create" class="nav-link-item"><i class="bi bi-box-arrow-up"></i> Borrow Tool</a>
                 <a href="/Lending/KioskReturn" class="nav-link-item text-warning"><i class="bi bi-person-bounding-box text-warning"></i> Smart Return</a>
                 <a href="/Lending" class="nav-link-item"><i class="bi bi-arrow-left-right"></i> Lending History</a>
                 <a href="/Approval" class="nav-link-item"><i class="bi bi-check-circle"></i> Approvals</a>
@@ -325,6 +323,32 @@
         });
     </script>
     
+    <script>
+        // Prevent double submission globally
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                if (this.classList.contains('is-submitting')) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Only prevent if the form is valid (or if no validation is attached)
+                if (typeof this.checkValidity === 'function' && !this.checkValidity()) {
+                    return;
+                }
+
+                this.classList.add('is-submitting');
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    const originalHtml = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+                    submitBtn.style.pointerEvents = 'none';
+                    // We don't fully disable the button to ensure its value is sent if needed
+                }
+            });
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

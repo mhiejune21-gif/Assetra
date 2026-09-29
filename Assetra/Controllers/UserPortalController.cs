@@ -55,7 +55,7 @@ namespace Assetra.Controllers
             ViewBag.PendingRequests = pendingRequests;
 
             var activeLoans = lendings
-                .Where(l => l.BorrowedBy == userId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"))
+                .Where(l => l.BorrowedBy == userId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"))
                 .OrderByDescending(l => l.DateBorrowed)
                 .ToList();
 

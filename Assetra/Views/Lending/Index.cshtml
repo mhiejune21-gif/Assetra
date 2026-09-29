@@ -44,7 +44,7 @@
             <div class="col-md-3 col-6">
                 <select name="status" class="form-select form-select-sm">
                     <option value="">-- All Statuses --</option>
-                    <option value="Pending" selected="@(ViewBag.Status == "Pending")">Pending Approval</option>
+                    <option value="Pending" selected="@(ViewBag.Status == "Pending")">Processing</option>
                     <option value="Borrowed" selected="@(ViewBag.Status == "Borrowed" || ViewBag.Status == "Approved")">Borrowed (Active)</option>
                     <option value="Returned" selected="@(ViewBag.Status == "Returned")">Returned</option>
                     <option value="Pending Return" selected="@(ViewBag.Status == "Pending Return")">Pending Return</option>
@@ -119,7 +119,7 @@
                     {
                         foreach (var item in Model)
                         {
-                            bool isOverdue = item.Status != "Returned" && item.Status != "Rejected" && item.Status != "Pending Return" && item.DueDate < DateTime.Today;
+                            bool isOverdue = item.Status != "Returned" && item.Status != "Rejected" && item.Status != "Pending Return" && item.Status != "Immediate Return" && item.DueDate < DateTime.Today;
                             <tr>
                                 <td class="ps-4 font-monospace small">TX-@item.LendingId.ToString("D4")</td>
                                 <td>
@@ -146,7 +146,11 @@
                                 <td>
                                     @if (item.Status == "Pending")
                                     {
-                                        <span class="badge rounded-pill bg-cyan-100 text-cyan-800 border border-cyan-200">Pending Approval</span>
+                                        <span class="badge rounded-pill bg-cyan-100 text-cyan-800 border border-cyan-200">Processing</span>
+                                    }
+                                    else if (item.Status == "Immediate Return")
+                                    {
+                                        <span class="badge rounded-pill bg-danger text-white border border-danger shadow-sm"><i class="bi bi-exclamation-octagon me-1"></i>Immediate Return</span>
                                     }
                                     else if (item.Status == "Pending Return")
                                     {
@@ -182,7 +186,7 @@
                                 {
                                     <td class="small text-muted">@(item.ProcessedBy ?? "-")</td>
                                     <td class="pe-4 text-end">
-                                        @if (item.Status == "Borrowed" || item.Status == "Approved" || isOverdue || item.Status == "Pending" || item.Status == "Pending Return")
+                                        @if (item.Status == "Borrowed" || item.Status == "Approved" || isOverdue || item.Status == "Pending Return" || item.Status == "Immediate Return")
                                         {
                                             <a href="/Lending/ReturnTool/@item.LendingId" class="btn btn-sm btn-outline-success shadow-sm py-1 px-2 fw-semibold">
                                                 <i class="bi bi-arrow-return-left me-1"></i>Process Return

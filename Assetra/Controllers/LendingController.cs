@@ -163,7 +163,7 @@ namespace Assetra.Controllers
             }
 
             var lendings = await _firestoreService.GetLendingRecordsAsync();
-            int activeBorrows = lendings.Count(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"));
+            int activeBorrows = lendings.Count(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
             bool isAvailable = property.Status != "Maintenance" && property.ConditionStatus != "Damaged" && activeBorrows < property.Quantity;
 
             if (role != "Admin")
@@ -198,7 +198,7 @@ namespace Assetra.Controllers
                 }
 
                 var activeLendings = lendings
-                    .Where(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"))
+                    .Where(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"))
                     .ToList();
 
                 if (activeLendings.Count == 0)
@@ -250,7 +250,7 @@ namespace Assetra.Controllers
 
             var filtered = allProperties.Where(p => p.Status != "Maintenance" && p.ConditionStatus != "Damaged").ToList();
             var availableProperties = filtered.Where(p => {
-                int activeCount = lendings.Count(l => l.PropertyId == p.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"));
+                int activeCount = lendings.Count(l => l.PropertyId == p.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
                 return activeCount < p.Quantity;
             }).ToList();
 
@@ -288,7 +288,7 @@ namespace Assetra.Controllers
 
             var lendings = await _firestoreService.GetLendingRecordsAsync();
             int activeBorrowsCount = lendings
-                .Count(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"));
+                .Count(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
 
             if (activeBorrowsCount >= property.Quantity)
             {
@@ -389,7 +389,7 @@ namespace Assetra.Controllers
                 return RedirectToAction("Index");
             }
 
-            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Pending" || record.Status == "Pending Return")
+            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Pending" || record.Status == "Pending Return" || record.Status == "Immediate Return")
             {
                 record.Status = "Returned";
                 record.DateReturned = DateTime.UtcNow;
@@ -453,7 +453,7 @@ namespace Assetra.Controllers
                 if (liveDescriptor == null) return Json(new { success = false, message = "Invalid face data." });
 
                 var lendings = await _firestoreService.GetLendingRecordsAsync();
-                var activeLoans = lendings.Where(l => l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return").ToList();
+                var activeLoans = lendings.Where(l => l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return").ToList();
                 var activeBorrowerIds = activeLoans.Where(l => l.BorrowedBy.HasValue).Select(l => l.BorrowedBy.Value).Distinct();
 
                 var users = await _firestoreService.GetUsersAsync();
@@ -510,7 +510,7 @@ namespace Assetra.Controllers
             var record = await _firestoreService.GetLendingRecordByIdAsync(lendingId);
             if (record == null) return Json(new { success = false, message = "Record not found." });
 
-            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue")
+            if (record.Status == "Borrowed" || record.Status == "Approved" || record.Status == "Overdue" || record.Status == "Immediate Return")
             {
                 record.Status = "Pending Return";
                 record.ReturnedCondition = condition;

@@ -84,7 +84,7 @@ namespace Assetra.Controllers
                     {
                         var lendings = await _firestoreService.GetLendingRecordsAsync();
                         int activeBorrows = lendings
-                            .Count(l => l.PropertyId == record.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"));
+                            .Count(l => l.PropertyId == record.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
 
                         if (activeBorrows >= property.Quantity)
                         {
@@ -104,7 +104,7 @@ namespace Assetra.Controllers
                     }
                 }
 
-                record.Status = "Approved";
+                record.Status = "Borrowed";
                 record.DateBorrowed = DateTime.UtcNow;
 
                 await _firestoreService.UpdateLendingRecordAsync(record);

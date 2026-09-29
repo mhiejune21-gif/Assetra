@@ -40,7 +40,7 @@ namespace Assetra.Controllers
                 {
                     continue;
                 }
-                int active = allLendings.Count(l => l.PropertyId == p.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return"));
+                int active = allLendings.Count(l => l.PropertyId == p.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
                 totalBorrowed += active;
                 totalAvailable += Math.Max(0, p.Quantity - active);
             }
