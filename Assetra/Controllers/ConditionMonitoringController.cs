@@ -29,7 +29,16 @@ namespace Assetra.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            var lending = await _firestoreService.GetLendingRecordByIdAsync(lendingId);
+            var lendingTask = _firestoreService.GetLendingRecordByIdAsync(lendingId);
+            var allReportsTask = _firestoreService.GetConditionReportsAsync();
+            var existingReportTask = reportId.HasValue ? _firestoreService.GetConditionReportByIdAsync(reportId.Value) : Task.FromResult<ConditionReport?>(null);
+
+            await Task.WhenAll(lendingTask, allReportsTask, existingReportTask);
+
+            var lending = lendingTask.Result;
+            var allReports = allReportsTask.Result;
+            var existingReport = existingReportTask.Result;
+
             if (lending == null) return NotFound();
 
             var role = HttpContext.Session.GetString("Role");
@@ -52,7 +61,6 @@ namespace Assetra.Controllers
 
                 int maxIncidents = borrowDays <= 7 ? 2 : (borrowDays <= 14 ? 4 : (borrowDays <= 30 ? 6 : 10));
                 
-                var allReports = await _firestoreService.GetConditionReportsAsync();
                 int currentIncidents = allReports
                     .Count(r => r.LendingId == lendingId && !r.IsScheduled && r.DateSubmitted != null);
 
@@ -65,9 +73,8 @@ namespace Assetra.Controllers
 
             if (reportId.HasValue)
             {
-                var report = await _firestoreService.GetConditionReportByIdAsync(reportId.Value);
-                if (report == null) return NotFound();
-                return View(report);
+                if (existingReport == null) return NotFound();
+                return View(existingReport);
             }
 
             return View(new ConditionReport { LendingId = lendingId });
@@ -232,10 +239,15 @@ namespace Assetra.Controllers
                 return RedirectToAction("Index", "UserPortal");
             }
 
-            var report = await _firestoreService.GetConditionReportByIdAsync(id);
+            var reportTask = _firestoreService.GetConditionReportByIdAsync(id);
+            var reportsTask = _firestoreService.GetConditionReportsAsync();
+            await Task.WhenAll(reportTask, reportsTask);
+
+            var report = reportTask.Result;
+            var reports = reportsTask.Result;
+
             if (report == null) return NotFound();
 
-            var reports = await _firestoreService.GetConditionReportsAsync();
             ViewBag.ToolHistory = reports
                 .Where(r => r.Lending != null && report.Lending != null && r.Lending.PropertyId == report.Lending.PropertyId && r.DateSubmitted != null)
                 .OrderByDescending(r => r.DateSubmitted)

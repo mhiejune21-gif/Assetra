@@ -38,7 +38,14 @@ namespace Assetra.Controllers
             var role = HttpContext.Session.GetString("Role");
             var today = DateTime.Today;
 
-            var allRecords = await _firestoreService.GetLendingRecordsAsync();
+            var lendingsTask = _firestoreService.GetLendingRecordsAsync();
+            var reportsTask = _firestoreService.GetConditionReportsAsync();
+
+            await Task.WhenAll(lendingsTask, reportsTask);
+
+            var allRecords = lendingsTask.Result;
+            var reports = reportsTask.Result;
+
             IEnumerable<LendingRecord> query = allRecords;
 
             if (role != "Admin")
@@ -103,7 +110,6 @@ namespace Assetra.Controllers
             ViewBag.Category = category;
             ViewBag.Sort = sort;
 
-            var reports = await _firestoreService.GetConditionReportsAsync();
             var overdueLendingIds = reports
                 .Where(r => r.IsScheduled && r.DateSubmitted == null && r.ScheduledDate < today)
                 .Select(r => r.LendingId)
@@ -245,8 +251,15 @@ namespace Assetra.Controllers
             var role = HttpContext.Session.GetString("Role");
             ViewBag.SelectedPropertyId = propertyId;
             
-            var allProperties = await _firestoreService.GetPropertiesAsync();
-            var lendings = await _firestoreService.GetLendingRecordsAsync();
+            var propertiesTask = _firestoreService.GetPropertiesAsync();
+            var lendingsTask = _firestoreService.GetLendingRecordsAsync();
+            var usersTask = _firestoreService.GetUsersAsync();
+            
+            await Task.WhenAll(propertiesTask, lendingsTask, usersTask);
+
+            var allProperties = propertiesTask.Result;
+            var lendings = lendingsTask.Result;
+            var users = usersTask.Result;
 
             var filtered = allProperties.Where(p => p.Status != "Maintenance" && p.ConditionStatus != "Damaged").ToList();
             var availableProperties = filtered.Where(p => {
@@ -256,7 +269,6 @@ namespace Assetra.Controllers
 
             ViewBag.Properties = availableProperties;
             
-            var users = await _firestoreService.GetUsersAsync();
             ViewBag.Users = users.Where(u => u.Role == "User").ToList();
 
             if (role != "Admin")

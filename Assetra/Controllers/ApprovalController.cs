@@ -42,14 +42,20 @@ namespace Assetra.Controllers
         // List pending approvals
         public async Task<IActionResult> Index()
         {
-            var records = await _firestoreService.GetLendingRecordsAsync();
+            var recordsTask = _firestoreService.GetLendingRecordsAsync();
+            var reportsTask = _firestoreService.GetConditionReportsAsync();
+            
+            await Task.WhenAll(recordsTask, reportsTask);
+            
+            var records = recordsTask.Result;
+            var reports = reportsTask.Result;
+
             var pendingRecords = records
                 .Where(l => l.Status == "Pending")
                 .OrderBy(l => l.DateBorrowed)
                 .ToList();
 
             var today = DateTime.Today;
-            var reports = await _firestoreService.GetConditionReportsAsync();
             var overdueReports = reports
                 .Where(r => r.IsScheduled && r.DateSubmitted == null && r.ScheduledDate < today)
                 .ToList();

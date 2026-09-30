@@ -595,11 +595,13 @@ namespace Assetra.Services
                 reports = _conditionReports.Values.OrderByDescending(r => r.ReportId).ToList();
             }
 
+            // Prevent N+1 queries by fetching all lendings once
+            var allLendings = (await GetLendingRecordsAsync()).ToDictionary(l => l.LendingId);
             foreach (var r in reports)
             {
-                if (r.LendingId != 0)
+                if (r.LendingId != 0 && allLendings.TryGetValue(r.LendingId, out var lending))
                 {
-                    r.Lending = await GetLendingRecordByIdAsync(r.LendingId);
+                    r.Lending = lending;
                 }
             }
 
@@ -761,11 +763,13 @@ namespace Assetra.Services
                 records = _maintenanceRecords.Values.OrderByDescending(m => m.MaintenanceId).ToList();
             }
 
+            // Prevent N+1 queries by fetching all properties once
+            var allProperties = (await GetPropertiesAsync()).ToDictionary(p => p.PropertyId);
             foreach (var m in records)
             {
-                if (!string.IsNullOrEmpty(m.PropertyId))
+                if (!string.IsNullOrEmpty(m.PropertyId) && allProperties.TryGetValue(m.PropertyId, out var prop))
                 {
-                    m.Property = await GetPropertyByIdAsync(m.PropertyId);
+                    m.Property = prop;
                 }
             }
 
