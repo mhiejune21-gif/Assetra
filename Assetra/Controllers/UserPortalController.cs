@@ -78,8 +78,8 @@ namespace Assetra.Controllers
             ViewBag.ConditionReports = conditionReports;
 
             var returnedHistory = lendings
-                .Where(l => l.BorrowedBy == userId && l.Status == "Returned")
-                .OrderByDescending(l => l.DateReturned)
+                .Where(l => l.BorrowedBy == userId && (l.Status == "Returned" || l.Status == "Rejected"))
+                .OrderByDescending(l => l.DateReturned ?? l.DateBorrowed)
                 .ToList();
 
             ViewBag.ReturnedHistory = returnedHistory;

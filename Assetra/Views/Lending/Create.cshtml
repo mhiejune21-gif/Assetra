@@ -149,10 +149,6 @@
                     <button class="btn btn-warning fw-bold w-100 shadow-sm" id="verifyBtn" onclick="verifyFace()" disabled>
                         <i class="bi bi-shield-lock me-2"></i>Verify Face
                     </button>
-                    <!-- Fallback -->
-                    <button class="btn btn-link text-muted small mt-2" onclick="bypassVerification()" style="font-size: 11px;">
-                        Camera broken? Use PIN fallback
-                    </button>
                 </div>
             </div>
         </div>
@@ -243,6 +239,7 @@
         }
 
         const role = "@role";
+        let isFaceVerified = (role === "Admin");
         const confirmModal = new bootstrap.Modal(document.getElementById('confirmBorrowModal'));
         const faceVerifyModal = new bootstrap.Modal(document.getElementById('faceVerifyModal'));
         
@@ -276,6 +273,21 @@
                 });
             }
 
+            // Prevent direct submission without verification
+            borrowForm.addEventListener("submit", function (e) {
+                if (role !== "Admin" && !isFaceVerified) {
+                    e.preventDefault();
+                    alert("Facial recognition verification is required before you can borrow items.");
+                    if (!enrolledDescriptor) {
+                        window.location.href = "/UserPortal?setupFace=true";
+                    } else {
+                        faceVerifyModal.show();
+                        startVerificationCamera();
+                    }
+                    return false;
+                }
+            });
+
             // Trigger validation and show modal
             btnSubmitCheck.addEventListener("click", function () {
                 if (!borrowForm.checkValidity()) {
@@ -283,21 +295,28 @@
                     return;
                 }
 
-                if (role !== "Admin" && enrolledDescriptor) {
-                    // Show Face Verification Modal first
-                    faceVerifyModal.show();
-                    startVerificationCamera();
-                } else {
-                    // Skip directly to summary (Admin or no face registered)
-                    if (role !== "Admin" && !enrolledDescriptor) {
-                        alert("Note: You have not set up your Face ID. Proceeding without facial verification.");
+                if (role !== "Admin") {
+                    if (!enrolledDescriptor) {
+                        alert("Facial recognition verification is required before you can borrow items.");
+                        window.location.href = "/UserPortal?setupFace=true";
+                        return;
                     }
-                    showSummaryModal();
+                    if (!isFaceVerified) {
+                        faceVerifyModal.show();
+                        startVerificationCamera();
+                        return;
+                    }
                 }
+
+                showSummaryModal();
             });
 
             // Final submit trigger
             btnConfirmSubmit.addEventListener("click", function () {
+                if (role !== "Admin" && !isFaceVerified) {
+                    alert("Facial recognition verification is required before you can borrow items.");
+                    return;
+                }
                 confirmModal.hide();
                 borrowForm.submit();
             });
@@ -337,6 +356,7 @@
             } catch (err) {
                 console.error("Camera access denied.", err);
                 loadingText.innerText = "Camera Access Denied";
+                alert("Camera permission was denied or camera is unavailable. Facial recognition verification is required before you can borrow items.");
             }
         }
 
@@ -354,6 +374,12 @@
             const btn = document.getElementById('verifyBtn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analyzing...';
+
+            if (!enrolledDescriptor) {
+                alert("Facial recognition verification is required before you can borrow items. Please set up your Face ID first.");
+                window.location.href = "/UserPortal?setupFace=true";
+                return;
+            }
 
             try {
                 await new Promise(resolve => setTimeout(resolve, 100)); // UI paint
@@ -376,6 +402,7 @@
                 // 0.6 is the standard threshold for face-api.js recognition
                 if (distance < 0.6) {
                     // Match successful!
+                    isFaceVerified = true;
                     btn.classList.replace('btn-warning', 'btn-success');
                     btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Verified!';
                     
@@ -385,26 +412,15 @@
                         showSummaryModal();
                     }, 1000);
                 } else {
-                    alert("Face does not match the registered user! (Distance: " + distance.toFixed(2) + ")");
+                    alert("Facial verification failed: Face does not match the registered user! Please position your face clearly in the frame.");
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Verify Face';
                 }
             } catch (err) {
                 console.error(err);
-                alert("Error analyzing face.");
+                alert("Error analyzing face during verification. Please ensure camera access and lighting are optimal.");
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Verify Face';
-            }
-        }
-
-        function bypassVerification() {
-            const pin = prompt("Enter Admin Override PIN to bypass facial recognition:");
-            if (pin === "1234") { // Simple fallback PIN, in real-world use a server-side check
-                stopVerificationCamera();
-                faceVerifyModal.hide();
-                showSummaryModal();
-            } else {
-                alert("Invalid PIN.");
             }
         }
 

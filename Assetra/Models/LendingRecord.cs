@@ -34,6 +34,9 @@ namespace Assetra.Models
         public string? ProcessedBy { get; set; }
 
         [FirestoreProperty]
+        public string? RejectionReason { get; set; }
+
+        [FirestoreProperty]
         public DateTime DateBorrowed { get; set; } = DateTime.UtcNow;
 
         [FirestoreProperty]

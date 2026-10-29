@@ -47,6 +47,7 @@
                     <option value="Pending" selected="@(ViewBag.Status == "Pending")">Processing</option>
                     <option value="Borrowed" selected="@(ViewBag.Status == "Borrowed" || ViewBag.Status == "Approved")">Borrowed (Active)</option>
                     <option value="Returned" selected="@(ViewBag.Status == "Returned")">Returned</option>
+                    <option value="Rejected" selected="@(ViewBag.Status == "Rejected")">Rejected</option>
                     <option value="Pending Return" selected="@(ViewBag.Status == "Pending Return")">Pending Return</option>
                     <option value="Overdue" selected="@(ViewBag.Status == "Overdue")">Overdue</option>
                 </select>
@@ -147,6 +148,16 @@
                                     @if (item.Status == "Pending")
                                     {
                                         <span class="badge rounded-pill bg-cyan-100 text-cyan-800 border border-cyan-200">Processing</span>
+                                    }
+                                    else if (item.Status == "Rejected")
+                                    {
+                                        <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger shadow-sm"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                        @if (!string.IsNullOrEmpty(item.RejectionReason))
+                                        {
+                                            <div class="text-muted small mt-1" style="font-size: 10px;" title="@item.RejectionReason">
+                                                <span class="fw-semibold">Reason:</span> @item.RejectionReason
+                                            </div>
+                                        }
                                     }
                                     else if (item.Status == "Immediate Return")
                                     {

@@ -122,8 +122,22 @@ namespace Assetra.Controllers
         }
 
         // Show Scan QR Page
-        public IActionResult Scan()
+        public async Task<IActionResult> Scan()
         {
+            var role = HttpContext.Session.GetString("Role");
+            if (role != "Admin")
+            {
+                var userIdString = HttpContext.Session.GetString("UserId");
+                if (int.TryParse(userIdString, out int uid))
+                {
+                    var student = await _firestoreService.GetUserByIdAsync(uid);
+                    if (student == null || string.IsNullOrWhiteSpace(student.FaceDescriptor))
+                    {
+                        TempData["Error"] = "Facial recognition verification is required before you can borrow items.";
+                        return RedirectToAction("Index", "UserPortal");
+                    }
+                }
+            }
             return View();
         }
 
@@ -131,6 +145,20 @@ namespace Assetra.Controllers
         public async Task<IActionResult> IdentifyTool(string propertyId)
         {
             var role = HttpContext.Session.GetString("Role");
+
+            if (role != "Admin")
+            {
+                var userIdString = HttpContext.Session.GetString("UserId");
+                if (int.TryParse(userIdString, out int uid))
+                {
+                    var student = await _firestoreService.GetUserByIdAsync(uid);
+                    if (student == null || string.IsNullOrWhiteSpace(student.FaceDescriptor))
+                    {
+                        TempData["Error"] = "Facial recognition verification is required before you can borrow items.";
+                        return RedirectToAction("Index", "UserPortal");
+                    }
+                }
+            }
 
             if (string.IsNullOrEmpty(propertyId))
             {
@@ -287,6 +315,16 @@ namespace Assetra.Controllers
                 {
                     var student = await _firestoreService.GetUserByIdAsync(userId);
                     ViewBag.StudentInfo = student;
+
+                    if (student == null || string.IsNullOrWhiteSpace(student.FaceDescriptor))
+                    {
+                        TempData["Error"] = "Facial recognition verification is required before you can borrow items.";
+                        return RedirectToAction("Index", "UserPortal");
+                    }
+                }
+                else
+                {
+                    return RedirectToAction("Login", "Account");
                 }
             }
 
@@ -354,13 +392,21 @@ namespace Assetra.Controllers
                 if (int.TryParse(currentUserIdString, out int studentId))
                 {
                     var studentUser = await _firestoreService.GetUserByIdAsync(studentId);
-                    if (studentUser != null)
+                    if (studentUser == null || string.IsNullOrWhiteSpace(studentUser.FaceDescriptor))
                     {
-                        record.BorrowedBy = studentUser.UserId;
-                        record.BorrowerName = studentUser.FullName;
-                        record.StudentId = studentUser.Username;
+                        TempData["Error"] = "Facial recognition verification is required before you can borrow items.";
+                        return RedirectToAction("Index", "UserPortal");
                     }
+
+                    record.BorrowedBy = studentUser.UserId;
+                    record.BorrowerName = studentUser.FullName;
+                    record.StudentId = studentUser.Username;
                 }
+                else
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
                 record.Status = "Pending";
                 record.DateBorrowed = DateTime.UtcNow; record.DueDate = DateTime.SpecifyKind(record.DueDate, DateTimeKind.Utc);
                 record.BorrowedCondition = property.ConditionStatus;

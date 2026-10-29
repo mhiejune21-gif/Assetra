@@ -11,6 +11,13 @@
     </div>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 shadow-sm mb-4 text-success small py-2 px-3" style="background-color: #f0fdf4;" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["Success"]
+    </div>
+}
+
 @if (TempData["Error"] != null)
 {
     <div class="alert alert-danger border-0 shadow-sm mb-4 text-danger small py-2 px-3" style="background-color: #fef2f2;" role="alert">
@@ -82,9 +89,10 @@
                                                 <i class="bi bi-check-lg me-1"></i>Approve
                                             </button>
                                         </form>
-                                        <form method="post" action="/Approval/Reject">
+                                        <form method="post" action="/Approval/Reject" id="rejectForm_@item.LendingId">
                                             <input type="hidden" name="id" value="@item.LendingId" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 shadow-sm fw-semibold" onclick="return confirm('Reject borrowing request for @item.Property?.Name?');">
+                                            <input type="hidden" name="reason" id="rejectReason_@item.LendingId" value="" />
+                                            <button type="button" class="btn btn-sm btn-outline-danger px-3 shadow-sm fw-semibold" onclick="handleReject(@item.LendingId, '@item.Property?.Name')">
                                                 <i class="bi bi-x-lg me-1"></i>Reject
                                             </button>
                                         </form>
@@ -98,3 +106,13 @@
         </div>
     </div>
 </div>
+
+<script>
+    function handleReject(id, propName) {
+        const reason = prompt("Enter reason for rejecting borrowing request for " + propName + " (optional):");
+        if (reason !== null) {
+            document.getElementById('rejectReason_' + id).value = reason;
+            document.getElementById('rejectForm_' + id).submit();
+        }
+    }
+</script>

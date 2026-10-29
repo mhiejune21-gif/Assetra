@@ -120,13 +120,38 @@ namespace Assetra.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Reject(int id)
+        public async Task<IActionResult> Reject(int id, string? reason)
         {
             var record = await _firestoreService.GetLendingRecordByIdAsync(id);
             if (record != null && record.Status == "Pending")
             {
                 record.Status = "Rejected";
+                record.ProcessedBy = HttpContext.Session.GetString("FullName") ?? "Admin";
+                if (!string.IsNullOrWhiteSpace(reason))
+                {
+                    record.RejectionReason = reason.Trim();
+                }
+
                 await _firestoreService.UpdateLendingRecordAsync(record);
+
+                if (!string.IsNullOrEmpty(record.PropertyId))
+                {
+                    var property = await _firestoreService.GetPropertyByIdAsync(record.PropertyId);
+                    if (property != null && property.Status == "On Loan")
+                    {
+                        var lendings = await _firestoreService.GetLendingRecordsAsync();
+                        int activeBorrows = lendings
+                            .Count(l => l.PropertyId == record.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
+
+                        if (activeBorrows < property.Quantity && property.ConditionStatus != "Damaged")
+                        {
+                            property.Status = "Available";
+                            await _firestoreService.UpdatePropertyAsync(property);
+                        }
+                    }
+                }
+
+                TempData["Success"] = $"Borrowing request for '{record.Property?.Name}' has been rejected.";
             }
             return RedirectToAction("Index");
         }
