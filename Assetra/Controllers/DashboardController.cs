@@ -36,7 +36,7 @@ namespace Assetra.Controllers
             int totalBorrowed = 0;
             foreach (var p in allProps)
             {
-                if (p.Status == "Maintenance" || p.ConditionStatus == "Damaged")
+                if (p.Status == "Maintenance" || p.Status == "Disabled" || p.ConditionStatus == "Damaged")
                 {
                     continue;
                 }

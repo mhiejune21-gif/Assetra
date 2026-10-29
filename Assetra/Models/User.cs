@@ -24,6 +24,9 @@ namespace Assetra.Models
         public string Role { get; set; } = "User";
 
         [FirestoreProperty]
+        public string Status { get; set; } = "Active";
+
+        [FirestoreProperty]
         public string? FaceDescriptor { get; set; }
 
         [FirestoreProperty]

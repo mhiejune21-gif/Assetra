@@ -34,6 +34,14 @@ namespace Assetra.Controllers
                 return RedirectToAction("Logout", "Account");
             }
 
+            var currentUser = await _firestoreService.GetUserByIdAsync(userId);
+            if (currentUser != null && currentUser.Status == "Disabled")
+            {
+                HttpContext.Session.Clear();
+                TempData["Error"] = "Your account has been disabled. Please contact an administrator.";
+                return RedirectToAction("Login", "Account");
+            }
+
             var properties = await _firestoreService.GetPropertiesAsync();
             var availableItems = properties
                 .Where(p => p.Status == "Available" && p.ConditionStatus != "Damaged")
@@ -75,8 +83,6 @@ namespace Assetra.Controllers
                 .ToList();
 
             ViewBag.ReturnedHistory = returnedHistory;
-
-            var currentUser = await _firestoreService.GetUserByIdAsync(userId);
             ViewBag.CurrentUser = currentUser;
 
             return View();

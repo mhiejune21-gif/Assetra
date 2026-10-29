@@ -143,34 +143,47 @@ namespace Assetra.Controllers
             return RedirectToAction("Index");
         }
 
-        // Delete
-        public async Task<IActionResult> Delete(string id)
+        // Disable / Enable Tool
+        public async Task<IActionResult> Disable(string id)
         {
             var property = await _firestoreService.GetPropertyByIdAsync(id);
             if (property != null)
             {
-                if (!string.IsNullOrEmpty(property.ImagePath) && property.ImagePath.StartsWith("/images/uploads/"))
+                if (property.Status == "Disabled")
                 {
-                    string path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", property.ImagePath.TrimStart('/'));
-                    if (System.IO.File.Exists(path))
+                    property.Status = "Available";
+                    await _firestoreService.UpdatePropertyAsync(property);
+                    TempData["Success"] = $"Tool '{property.Name}' has been enabled and is now Available.";
+                }
+                else
+                {
+                    var lendings = await _firestoreService.GetLendingRecordsAsync();
+                    bool hasActiveLoans = lendings.Any(l => l.PropertyId == property.PropertyId && 
+                        (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
+
+                    property.Status = "Disabled";
+                    await _firestoreService.UpdatePropertyAsync(property);
+
+                    if (hasActiveLoans)
                     {
-                        try { System.IO.File.Delete(path); } catch { }
+                        TempData["Success"] = $"Tool '{property.Name}' has been disabled for new borrowings. Existing active loans must still be returned.";
+                    }
+                    else
+                    {
+                        TempData["Success"] = $"Tool '{property.Name}' has been disabled.";
                     }
                 }
+            }
 
-                if (!string.IsNullOrEmpty(property.QrCodePath) && property.QrCodePath.StartsWith("/images/qrcodes/"))
-                {
-                    string qrPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", property.QrCodePath.TrimStart('/'));
-                    if (System.IO.File.Exists(qrPath))
-                    {
-                        try { System.IO.File.Delete(qrPath); } catch { }
-                    }
-                }
-
-                await _firestoreService.DeletePropertyAsync(id);
+            var referer = Request.Headers["Referer"].ToString();
+            if (!string.IsNullOrEmpty(referer) && referer.Contains("/Inventory/Details", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("Details", new { id });
             }
             return RedirectToAction("Index");
         }
+
+        public async Task<IActionResult> Delete(string id) => await Disable(id);
 
         // Helper to generate a printable QR Code action
         public async Task<IActionResult> PrintQR(string id)

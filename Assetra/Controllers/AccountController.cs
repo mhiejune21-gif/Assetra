@@ -41,6 +41,12 @@ namespace Assetra.Controllers
             var user = await _firestoreService.GetUserByUsernameAsync(username);
             if (user != null && !string.IsNullOrEmpty(user.PasswordHash) && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
+                if (user.Status == "Disabled")
+                {
+                    ViewBag.Error = "Your account has been disabled. Please contact an administrator.";
+                    return View();
+                }
+
                 HttpContext.Session.SetString("UserId", user.UserId.ToString());
                 HttpContext.Session.SetString("FullName", user.FullName);
                 HttpContext.Session.SetString("Role", user.Role);

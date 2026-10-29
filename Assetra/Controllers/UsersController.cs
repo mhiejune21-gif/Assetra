@@ -243,8 +243,8 @@ namespace Assetra.Controllers
             return RedirectToAction("Index");
         }
 
-        // Delete user
-        public async Task<IActionResult> Delete(int id)
+        // Disable / Enable user
+        public async Task<IActionResult> Disable(int id)
         {
             var user = await _firestoreService.GetUserByIdAsync(id);
             if (user != null)
@@ -252,13 +252,17 @@ namespace Assetra.Controllers
                 var currentUserId = HttpContext.Session.GetString("UserId");
                 if (currentUserId == id.ToString())
                 {
-                    TempData["Error"] = "You cannot delete your own account.";
+                    TempData["Error"] = "You cannot disable your own account.";
                     return RedirectToAction("Index");
                 }
 
-                await _firestoreService.DeleteUserAsync(id);
+                user.Status = (user.Status == "Disabled") ? "Active" : "Disabled";
+                await _firestoreService.UpdateUserAsync(user);
+                TempData["Success"] = $"User '{user.Username}' has been {(user.Status == "Disabled" ? "disabled" : "enabled")}.";
             }
             return RedirectToAction("Index");
         }
+
+        public async Task<IActionResult> Delete(int id) => await Disable(id);
     }
 }

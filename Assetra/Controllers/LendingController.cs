@@ -170,7 +170,7 @@ namespace Assetra.Controllers
 
             var lendings = await _firestoreService.GetLendingRecordsAsync();
             int activeBorrows = lendings.Count(l => l.PropertyId == property.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
-            bool isAvailable = property.Status != "Maintenance" && property.ConditionStatus != "Damaged" && activeBorrows < property.Quantity;
+            bool isAvailable = property.Status != "Maintenance" && property.Status != "Disabled" && property.ConditionStatus != "Damaged" && activeBorrows < property.Quantity;
 
             if (role != "Admin")
             {
@@ -180,7 +180,11 @@ namespace Assetra.Controllers
                 }
                 else
                 {
-                    if (property.ConditionStatus == "Damaged")
+                    if (property.Status == "Disabled")
+                    {
+                        TempData["Error"] = $"Tool '{property.Name}' is currently disabled.";
+                    }
+                    else if (property.ConditionStatus == "Damaged")
                     {
                         TempData["Error"] = $"Tool '{property.Name}' is marked Damaged and cannot be borrowed.";
                     }
@@ -200,6 +204,11 @@ namespace Assetra.Controllers
                 if (property.Status == "Maintenance")
                 {
                     TempData["Error"] = $"Tool '{property.Name}' is currently in maintenance.";
+                    return RedirectToAction("Scan");
+                }
+                if (property.Status == "Disabled")
+                {
+                    TempData["Error"] = $"Tool '{property.Name}' is currently disabled.";
                     return RedirectToAction("Scan");
                 }
 
@@ -261,7 +270,7 @@ namespace Assetra.Controllers
             var lendings = lendingsTask.Result;
             var users = usersTask.Result;
 
-            var filtered = allProperties.Where(p => p.Status != "Maintenance" && p.ConditionStatus != "Damaged").ToList();
+            var filtered = allProperties.Where(p => p.Status != "Maintenance" && p.Status != "Disabled" && p.ConditionStatus != "Damaged").ToList();
             var availableProperties = filtered.Where(p => {
                 int activeCount = lendings.Count(l => l.PropertyId == p.PropertyId && (l.Status == "Borrowed" || l.Status == "Approved" || l.Status == "Overdue" || l.Status == "Pending Return" || l.Status == "Immediate Return"));
                 return activeCount < p.Quantity;
@@ -269,7 +278,7 @@ namespace Assetra.Controllers
 
             ViewBag.Properties = availableProperties;
             
-            ViewBag.Users = users.Where(u => u.Role == "User").ToList();
+            ViewBag.Users = users.Where(u => u.Role == "User" && u.Status != "Disabled").ToList();
 
             if (role != "Admin")
             {
@@ -289,7 +298,7 @@ namespace Assetra.Controllers
         public async Task<IActionResult> Create(LendingRecord record)
         {
             var property = await _firestoreService.GetPropertyByIdAsync(record.PropertyId);
-            if (property == null || property.Status == "Maintenance" || property.ConditionStatus == "Damaged")
+            if (property == null || property.Status == "Maintenance" || property.Status == "Disabled" || property.ConditionStatus == "Damaged")
             {
                 TempData["Error"] = "Selected tool is not available for borrowing.";
                 return RedirectToAction("Index");
