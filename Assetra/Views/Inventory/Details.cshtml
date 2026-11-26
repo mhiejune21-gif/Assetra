@@ -200,7 +200,7 @@
                 <h5 class="card-title fw-bold text-dark mb-3">Tool QR Code</h5>
                 
                 <div class="p-4 bg-white border rounded shadow-sm mb-3">
-                    @if (string.IsNullOrEmpty(Model.QrCodePath))
+                    @if (string.IsNullOrEmpty(Model.QrCodePath) || !Model.QrCodePath.StartsWith("data:"))
                     {
                         <div class="py-5 px-4 text-muted font-monospace">
                             <i class="bi bi-qr-code-scan fs-1 d-block mb-2 text-secondary"></i>
@@ -217,6 +217,10 @@
 
                 <div class="d-grid gap-2 w-100">
                     <a href="/Inventory/PrintQR/@Model.PropertyId" target="_blank" class="btn btn-outline-indigo"><i class="bi bi-printer me-2"></i>Print QR Code</a>
+                    @if (string.IsNullOrEmpty(Model.QrCodePath) || !Model.QrCodePath.StartsWith("data:"))
+                    {
+                        <a href="/Inventory/RegenerateQR/@Model.PropertyId" class="btn btn-warning btn-sm"><i class="bi bi-arrow-clockwise me-2"></i>Regenerate QR Code</a>
+                    }
                 </div>
 
                 <p class="small text-muted mt-3 mb-0">

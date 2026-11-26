@@ -190,7 +190,28 @@ namespace Assetra.Controllers
         {
             var property = await _firestoreService.GetPropertyByIdAsync(id);
             if (property == null) return NotFound();
+
+            // If QrCodePath is a stale file path (not a data URI), regenerate it on the fly
+            if (!string.IsNullOrEmpty(property.QrCodePath) && !property.QrCodePath.StartsWith("data:"))
+            {
+                property.QrCodePath = GenerateQR(property.PropertyId);
+                await _firestoreService.UpdatePropertyAsync(property);
+            }
+
             return View(property);
+        }
+
+        // Regenerate and persist QR code for an existing asset (fixes stale disk paths)
+        public async Task<IActionResult> RegenerateQR(string id)
+        {
+            var property = await _firestoreService.GetPropertyByIdAsync(id);
+            if (property == null) return NotFound();
+
+            property.QrCodePath = GenerateQR(property.PropertyId);
+            await _firestoreService.UpdatePropertyAsync(property);
+
+            TempData["Success"] = $"QR code for '{property.Name}' has been regenerated.";
+            return RedirectToAction("Details", new { id });
         }
 
         // --- Private helper methods ---
@@ -221,15 +242,11 @@ namespace Assetra.Controllers
             var pngQr = new PngByteQRCode(data);
             byte[] bytes = pngQr.GetGraphic(20);
 
-            string folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "qrcodes");
-            if (!Directory.Exists(folder))
-                Directory.CreateDirectory(folder);
-
-            string fileName = $"{propertyId}_qr.png";
-            string path = Path.Combine(folder, fileName);
-            System.IO.File.WriteAllBytes(path, bytes);
-
-            return $"/images/qrcodes/{fileName}";
+            // Store as Base64 data URI instead of writing to disk.
+            // Render's free tier has an ephemeral filesystem — files written to wwwroot
+            // are lost on every restart/sleep. Data URIs survive because they live in Firestore.
+            string base64 = Convert.ToBase64String(bytes);
+            return $"data:image/png;base64,{base64}";
         }
 
         private string? SaveUploadedFile(IFormFile file)
